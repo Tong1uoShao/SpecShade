@@ -1,0 +1,59 @@
+# StyleRing global configuration (all entries read via utils.io.load_config)
+# OURS unless marked PAPER/ASSUMPTION.
+paths:
+  prompts: data/prompts/sdp_1000.jsonl
+  prompts_quality: data/prompts/sdp_5000.jsonl
+  coco_fid: data/coco_fid/val2017            # FID reference (COCO val2017, 5000 imgs)
+  results: results
+  survival_map: results/probe/survival_map.npz
+
+backend:
+  model_id: stable-diffusion-v1-5/stable-diffusion-v1-5   # ASSUMPTION: SD1.5 stands in for SD2.1-base (gated)
+  prefer_fp16: true
+  size: 512
+  latent: 64
+  gen_steps: 50            # PAPER-convention: 50 sampling steps [2,3,4]
+  cfg: 7.5                 # PAPER-convention: guidance 7.5 [2,4]
+  inv_steps: 50            # PAPER-convention: 50 DDIM inversion steps, empty prompt [2,3,4]
+  inv_guidance: 0.0        # PAPER-convention: guidance 0/1 (unconditional) at inversion [2,4]
+
+seeds: [97, 101, 202, 303, 404]   # OURS: fixed multi-seed protocol (attacks and generation)
+
+stylering:
+  n_bits: 16               # payload (user constraint: 16~32, 32 cap)
+  bch: {n: 63, k: 16}      # BCH(63,16), t=11
+  key: "stylering-demo-key-v1"   # secret (encryption + allocation); replace in production
+  alloc_strategy: measured # measured | uniform | lowcut | highring | spatial_sign
+  chase_flip: 8            # OURS: 256 hard decodes/image (<1 s); preview showed +25pp exact-decode on strong attacks vs 4
+  r_min: 1
+  r_max: 31
+  sectors: 8               # OURS: keyed sector chips per ring; 8 = final operating point. 1 = full-ring coherence (legacy;
+                           #   results/main was generated with 1 -> re-detect it with --override sectors=1), 0 = per-pair chips
+  sector_rotate: 0         # OURS: 1 = keyed per-ring rotation of the sector partition (de-aligns wedge 'spokes' across rings)
+  rot_search: 0            # OURS: 1 = detection-side rotation synchronisation (the keyed sign pattern is its own template:
+                           #   rotate the inverted latent over the circle, keep the angle with the strongest read-out)
+  rot_step: 1.0            # degrees per search step
+  crop_search: 0           # OURS: 1 = detection-side translation + scale synchronisation (crop-and-resize):
+                           #   zoom-out candidates scale_min..scale_max, all sub-pixel shifts via one padded IFFT
+  scale_min: 0.55
+  scale_max: 1.0
+  scale_step: 0.01
+  shift_up: 4              # sub-pixel resolution 1/shift_up px
+  max_shift: 12.0          # search window |shift| <= max_shift latent px
+  sync_z: 6.0              # OURS peak gating: accept a searched angle only if its peak is >= sync_z robust
+                           #   sigmas above the candidate noise floor; else keep the direct read (0 = always accept)
+  crop_z: 8.0              # same for the crop search (more candidates -> higher gate)
+  decode_variant: soft     # soft | hard | argmin | no_ecc
+
+quality:
+  clip_model: ViT-g-14     # ASSUMPTION: OpenCLIP ViT-g (RingID convention [3])
+  fid_n: 5000
+
+# CONTROL: Gaussian Shading (paper decoder, 16 bit) + the same detection-side synchronisation searches as StyleRing
+methods:
+  gaussian_shading:
+    n_bits: 16
+    rot_search: 1
+    crop_search: 1
+    sync_z: 6.0
+    crop_z: 8.0

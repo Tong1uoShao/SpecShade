@@ -1,0 +1,38 @@
+# Baseline parameters (defaults mirror the official repos; n_bits follows the payload constraint)
+gaussian_shading:
+  n_bits: 16          # ch=4, hw=16  (official default is 256 bits: ch=1, hw=8)
+  key: "gs-key-v1"
+gaussmarker:
+  n_bits: 16          # spatial multi-bit (Gaussian-Shading-chacha core), ch=4, hw=16
+  key: "gm-key-v1"
+  w_channel: 3        # PAPER [4]/tr_utils: zero-bit ring in channel 3
+  w_radius: 4         # PAPER [4]: small-radius ring (Parseval argument), default 4
+  fuse_lambda: 1.0    # OURS: score = spatial confidence - lambda * normalised ring L1
+  gnr_path: ""        # GaussMarker GNR weights (train with vendor/GaussMarker/train_GNR.py); empty = GaussMarker-lite
+gaussmarker_full:     # FULL GaussMarker [4], official 256-bit recipe with the trained GNR (one fixed message, as in the official code)
+  w_info_path: results/gnr/w1_256.pth               # written by vendor train_GNR.py (message, ChaCha20 key/nonce)
+  gnr_path: results/gnr/GNR_256bits/model_final.pth # train_GNR.py --train_steps 50000 --r 180 --s_min 1.0 --s_max 1.2 --fp 0.35 --model_nf 128
+  model_nf: 128
+  ch: 1
+  w: 8
+  h: 8
+  key: "gm-key-v1"   # Tree-Ring ring pattern key
+  w_channel: 3
+  w_radius: 4
+  fuse_lambda: 1.0
+vine:                 # image-level post-hoc encoder (VINE-R, ICLR'25) [5]; official 100-bit message
+  n_bits: 100
+  enc_repo: Shilin-LU/VINE-R-Enc
+  dec_repo: Shilin-LU/VINE-R-Dec
+stable_signature:     # image-level, fine-tuned VAE decoder with one baked-in 48-bit key (ICCV'23) [10]
+  key: "111010110101000001010111010011010100010000100111"   # PAPER: key of the released sd2_decoder.pth
+  decoder: src/models/baseline/vendor/weights/sd2_decoder.pth
+  extractor: src/models/baseline/vendor/weights/dec_48b_whit.torchscript.pt
+ringid:
+  n_bits: 16          # one ring per bit, radii 3..(3+n_bits-1), channel 3 [3]
+  key: "rid-key-v1"
+  channel: 3
+  r_start: 3
+  alpha: 64.0         # PAPER [3]: discretisation to +-64 in the Fourier domain
+  eta: 0.85           # PAPER [3]: spatial-shift damping factor in [0.8, 0.9]
+  spatial_shift: true

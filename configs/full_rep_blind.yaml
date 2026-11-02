@@ -1,0 +1,54 @@
+# BLIND EXTERNAL TEST: the method + joint rotation/zoom candidates (canvas-expanding rotations) (frequency-domain Gaussian Shading with soft votes) (frequency-domain analogue of Gaussian Shading): 15872 keyed signs, 16 bit
+# StyleRing global configuration (all entries read via utils.io.load_config)
+# OURS unless marked PAPER/ASSUMPTION.
+paths:
+  prompts: data/prompts/sdp_1000.jsonl
+  prompts_quality: data/prompts/sdp_5000.jsonl
+  coco_fid: data/coco_fid/val2017            # FID reference (COCO val2017, 5000 imgs)
+  results: results
+  survival_map: results/probe/survival_map.npz
+
+backend:
+  model_id: stable-diffusion-v1-5/stable-diffusion-v1-5   # ASSUMPTION: SD1.5 stands in for SD2.1-base (gated)
+  prefer_fp16: true
+  size: 512
+  latent: 64
+  gen_steps: 50            # PAPER-convention: 50 sampling steps [2,3,4]
+  cfg: 7.5                 # PAPER-convention: guidance 7.5 [2,4]
+  inv_steps: 50            # PAPER-convention: 50 DDIM inversion steps, empty prompt [2,3,4]
+  inv_guidance: 0.0        # PAPER-convention: guidance 0/1 (unconditional) at inversion [2,4]
+
+seeds: [97, 101, 202, 303, 404]   # OURS: fixed multi-seed protocol (attacks and generation)
+
+stylering:
+  n_bits: 16               # payload (user constraint: 16~32, 32 cap)
+  bch: {n: 63, k: 16}      # BCH(63,16), t=11
+  key: "stylering-demo-key-v1"   # secret (encryption + allocation); replace in production
+  alloc_strategy: repeat   # full-budget: codeword repeated over ALL cells, LLR soft-combined
+  carrier: both            # real + imaginary part of every ring
+  calib: count             # LLR weight = pixel count (white regime), no probe needed # measured | uniform | lowcut | highring | spatial_sign
+  chase_flip: 8            # OURS: 256 hard decodes/image (<1 s); preview showed +25pp exact-decode on strong attacks vs 4
+  r_min: 1
+  r_max: 44                # full spectrum (partial corner rings 32..44)
+  sectors: 0               # OURS: keyed sector chips per ring; 8 = final operating point. 1 = full-ring coherence (legacy;
+                           #   results/main was generated with 1 -> re-detect it with --override sectors=1), 0 = per-pair chips
+  sector_rotate: 0
+  geo_search: 1            # joint rotation x zoom x shift search (combined geometric edits)
+  geo_step: 3.0
+  geo_z: 8.0
+  rot_search: 1            # detection-side rotation synchronisation (peak-gated)
+  rot_scales: [1.0, 1.05, 1.1, 1.15, 1.2, 1.25, 1.33, 1.414]   # joint zoom-IN candidates: a canvas-expanding rotation shrinks the content by 1/(|cos|+|sin|)
+  rot_step: 1.0
+  crop_search: 1           # detection-side translation + scale synchronisation (peak-gated)
+  scale_min: 0.40
+  scale_max: 1.45           # joint search also covers zoom-in (canvas-expanding rotations)
+  scale_step: 0.01
+  shift_up: 4
+  max_shift: 12.0
+  sync_z: 6.0
+  crop_z: 8.0         # OURS: 1 = keyed per-ring rotation of the sector partition (de-aligns wedge 'spokes' across rings)
+  decode_variant: no_ecc   # frequency-domain GS: 16 positions x ~992 soft votes, no ECC, score = mean |y|     # soft | hard | argmin | no_ecc
+
+quality:
+  clip_model: ViT-g-14     # ASSUMPTION: OpenCLIP ViT-g (RingID convention [3])
+  fid_n: 5000

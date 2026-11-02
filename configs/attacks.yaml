@@ -1,0 +1,69 @@
+# Attack matrix (shared by probe, main experiment and ablations).
+# Each entry: name -> {engine, params: list of strength values}. Seeds come from default.yaml.
+style:
+  img2img_anime:      {engine: style_img2img, style: anime,      strengths: [0.3, 0.5, 0.7]}
+  img2img_comic:      {engine: style_img2img, style: comic,      strengths: [0.3, 0.5, 0.7]}
+  img2img_watercolor: {engine: style_img2img, style: watercolor, strengths: [0.3, 0.5, 0.7]}
+  ip2p_anime:         {engine: style_ip2p,    style: anime,      strengths: [2.0, 1.5, 1.0]}   # image_guidance_scale, lower = stronger
+  ip2p_comic:         {engine: style_ip2p,    style: comic,      strengths: [2.0, 1.5, 1.0]}
+  ip2p_watercolor:    {engine: style_ip2p,    style: watercolor, strengths: [2.0, 1.5, 1.0]}
+  adain_anime:        {engine: style_adain,   style: anime,      strengths: [0.3, 0.6, 1.0]}   # alpha
+  adain_comic:        {engine: style_adain,   style: comic,      strengths: [0.3, 0.6, 1.0]}
+  adain_watercolor:   {engine: style_adain,   style: watercolor, strengths: [0.3, 0.6, 1.0]}
+
+classical:   # Tree-Ring / Gaussian Shading battery [1,2,3]
+  jpeg:        {engine: jpeg,        strengths: [25]}
+  rotate:      {engine: rotate,      strengths: [75]}
+  crop_scale:  {engine: crop_scale,  strengths: [0.75]}
+  blur:        {engine: gauss_blur,  strengths: [8]}
+  noise:       {engine: gauss_noise, strengths: [0.1]}
+  brightness:  {engine: brightness,  strengths: [6]}
+  rand_drop:   {engine: rand_drop,   strengths: [0.8]}
+  median:      {engine: median,      strengths: [7]}
+  resize:      {engine: resize,      strengths: [0.25]}
+
+regeneration:   # GaussMarker advanced attacks [4]
+  regen_sd:    {engine: diffusion_regen, strengths: [1, 2, 4]}     # noising/denoising cycles
+  vae_cheng:   {engine: vae_compress,    strengths: [3]}           # CompressAI cheng2020 quality
+  vae_bmshj:   {engine: vae_compress_b,  strengths: [3]}
+
+geometry:   # OURS: synchronisation-search sweep (rotation angles, crop fractions)
+  rotate:      {engine: rotate,      strengths: [15, 30, 45, 75, 90]}
+  crop_scale:  {engine: crop_scale,  strengths: [0.9, 0.75, 0.5]}
+
+geometry_frac:   # OURS: non-integer rotation angles, half-way between the 1-degree grid points of the rotation search
+  rotate:      {engine: rotate,      strengths: [7.5, 22.5, 37.5, 67.5]}
+
+mirror:     # OURS: reflections (0 = horizontal mirror, 1 = vertical flip)
+  mirror:      {engine: mirror,      strengths: [0, 1]}
+
+combined:   # OURS: compound edits (regenerative + geometric, two geometric); chain in `style`, strength unused
+  combo_style_crop:   {engine: combo, style: "style_img2img/anime@0.3+crop_scale@0.75", strengths: [1]}
+  combo_style_mirror: {engine: combo, style: "style_ip2p/anime@1.5+mirror@0",          strengths: [1]}
+  combo_regen_rotate: {engine: combo, style: "diffusion_regen@1+rotate@30",           strengths: [1]}
+  combo_crop_rotate:  {engine: combo, style: "crop_scale@0.75+rotate@30",             strengths: [1]}
+
+key15:      # OURS: the 15 key cells used for the full GaussMarker (GNR) comparison
+  img2img_anime:     {engine: style_img2img, style: anime, strengths: [0.3, 0.5]}
+  adain_anime:       {engine: style_adain,   style: anime, strengths: [0.6, 1.0]}
+  ip2p_anime:        {engine: style_ip2p,    style: anime, strengths: [1.0]}
+  regen_sd:          {engine: diffusion_regen, strengths: [1, 2, 4]}
+  vae_cheng:         {engine: vae_compress,    strengths: [3]}
+  jpeg:              {engine: jpeg,        strengths: [25]}
+  blur:              {engine: gauss_blur,  strengths: [8]}
+  rotate:            {engine: rotate,      strengths: [75]}
+  crop_scale:        {engine: crop_scale,  strengths: [0.75]}
+  mirror:            {engine: mirror,      strengths: [0]}
+  combo_style_crop:  {engine: combo, style: "style_img2img/anime@0.3+crop_scale@0.75", strengths: [1]}
+
+capacity:   # OURS: capacity sweep (moderate regeneration and style transfer, where the 256-bit payload starts to fail)
+  img2img_anime:     {engine: style_img2img, style: anime, strengths: [0.5, 0.7]}
+  regen_sd:          {engine: diffusion_regen, strengths: [2]}
+
+capacity_lite:   # OURS: reduced capacity sweep (one attack), 20 images x 1 seed
+  img2img_anime:     {engine: style_img2img, style: anime, strengths: [0.5]}
+
+crop_sweep: # OURS: how small can a random crop get (area fraction; side = sqrt)
+  crop_scale:  {engine: crop_scale,  strengths: [0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]}
+
+# probe uses the style block only (RQ2 is about stylisation); main experiment uses all blocks.

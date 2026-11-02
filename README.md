@@ -1,0 +1,60 @@
+# SpecShade
+
+Code for **SpecShade: Training-Free Semantic Watermarking Robust to Regeneration and Geometric Attacks** (Jin Xiao, under review).
+
+SpecShade embeds a multi-bit payload into the signs of the Fourier coefficients of the initial noise of a latent diffusion model while keeping their magnitudes, so that the noise stays Gaussian and the diffusion model is used unchanged. Each bit is read by a magnitude-weighted vote over its Fourier coefficients with a payload-agnostic detection score, and a blind self-synchronization that uses the key pattern itself as the template recovers scaling, translation, rotation and reflection before reading. Nothing is trained.
+
+## Layout
+
+```
+src/core/            fourier_rings (ring cells, chips, synchronization search), modulation (embed / read), allocation, ecc, sd_backend
+src/models/          base interface, stylering.py (SpecShade), baseline/{gaussian_shading, gs_official, gaussmarker, gaussmarker_full, ringid, sfw, maxsive, stable_signature, vine}
+src/attacks/         registry, classical, regeneration, style_{img2img, ip2p, adain}, combo (compound edits)
+src/generate.py / attack.py / detect.py / detect_null.py / evaluate.py     pipeline stages (all resume by file)
+src/proto_freq_survival.py   per-ring sign survival and the same-error-field ablation (Fig. 9a, b)
+src/proto_oracle_sync.py     oracle-aligned vs. blind detection on compound attacks
+notebooks/           figures.py, tables.py, stats_extra.py (AUC, confidence intervals, held-out calibration, identification), tab_syncabl.py, cap_summary.py
+configs/             default.yaml, final256.yaml (SpecShade-256), final256_combo.yaml, final_gs256.yaml, final_gm256.yaml, final_sfw.yaml, final_maxsive.yaml, cap_*.yaml, attacks.yaml, methods.yaml
+scripts/             env.sh, prefetch_models.sh, clone_baselines.sh, paper256_*.sh (the batches that produced the paper's 256-bit results), extra_queue.sh, cap_lite.sh, sfw_queue.sh, maxsive_queue.sh
+tests/               CPU unit tests and GPU smoke tests
+data/prompts/        prompt lists (Stable-Diffusion-Prompts)
+```
+
+## Setup
+
+- Python >= 3.11, PyTorch, `pip install -r requirements.txt` (plus `torchvision` and `qrcode` for the SFW baseline). Tested with torch 2.10 and diffusers 0.39 on one RTX 4090.
+- Models are loaded from the local HuggingFace cache; `bash scripts/prefetch_models.sh` downloads them once (SD1.5 for generation and inversion, SDXL and InstructPix2Pix for the attacks, OpenCLIP ViT-g-14 and the CompressAI codecs). Afterwards every script runs with `HF_HUB_OFFLINE=1`.
+- AdaIN weights (`vgg_normalised.pth`, `decoder.pth` from the AdaIN release) go to `data/weights/adain/`; style exemplars are made by `python scripts/make_styles.py`.
+- Baselines: `bash scripts/clone_baselines.sh` clones the official repositories of Gaussian Shading, GaussMarker, RingID, MaXsive and SFW into `src/models/baseline/vendor/` (read-only; the wrappers in `src/models/baseline/` adapt them to this pipeline). GaussMarker's noise restorer is trained with the vendor script as listed in `configs/methods.yaml`; Stable Signature and VINE-R use their released weights.
+- `scripts/env.sh` reads `PY` (interpreter), `CODE_DIR` (repository root) and `HF_HOME`; every shell script sources it.
+
+## Pipeline
+
+Each experiment lives in `results/<exp>/<method>/` and goes through five stages, all of which resume from their output files:
+
+```
+python src/generate.py    --exp final256 --method stylering --n 100 --config configs/final256.yaml
+python src/attack.py      --exp final256 --method stylering --blocks style,classical,regeneration --seeds 97,101 --config configs/final256.yaml
+python src/detect.py      --exp final256 --method stylering --kind both --config configs/final256.yaml
+python src/detect_null.py --exp final256 --method stylering --none_exp finalq --config configs/final256.yaml
+python src/evaluate.py    --exp final256 --methods stylering --config configs/final256.yaml --variant no_ecc
+```
+
+`finalq` holds the 1,000 unwatermarked images used for every 1 %-FPR threshold (`generate.py --exp finalq --method none --n 1000`). The attack blocks are defined in `configs/attacks.yaml` (`style`, `classical`, `regeneration`, `geometry`, `geometry_frac`, `mirror`, `combined`, `key15`, `capacity`, `crop_sweep`). The exact batches that produced the paper's 256-bit results are `scripts/paper256_a.sh` (geometric and compound attacks), `paper256_b.sh` / `paper256_c.sh` (GaussMarker, main table, GS-256), `paper256_d.sh` (reference methods on the common null set) and `paper256_frac.sh` (non-integer rotation angles); `scripts/extra_queue.sh` runs the per-ring survival analysis, the synchronization ablation and the capacity sweep, and `scripts/sfw_queue.sh` / `maxsive_queue.sh` the SFW and MaXsive baselines on the 15 key attacks.
+
+Figures and tables of the paper are produced by `notebooks/figures.py`, `notebooks/tables.py`, `notebooks/stats_extra.py`, `notebooks/tab_syncabl.py` and `notebooks/cap_summary.py` from the `results/` files (`FIG_OUT` / `TAB_OUT` select the output directories).
+
+## Result files
+
+`gen.jsonl` (prompt_id, gen_seed, payload_hex, image) · `atk.jsonl` (src_image, attack, strength, atk_seed, image) · `detect*.jsonl` (per image: bit_acc, score, decoded bits, synchronization metadata) · `detect_null*.jsonl` (scores of the unwatermarked images) · `tables/main_<variant>.csv` (TPR@1%FPR and bit accuracy per attack setting).
+
+## Citation
+
+```
+@article{xiao2026specshade,
+  title   = {SpecShade: Training-Free Semantic Watermarking Robust to Regeneration and Geometric Attacks},
+  author  = {Xiao, Jin},
+  year    = {2026},
+  note    = {under review}
+}
+```
