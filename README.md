@@ -48,6 +48,10 @@ Figures and tables of the paper are produced by `notebooks/figures.py`, `noteboo
 
 `gen.jsonl` (prompt_id, gen_seed, payload_hex, image) · `atk.jsonl` (src_image, attack, strength, atk_seed, image) · `detect*.jsonl` (per image: bit_acc, score, decoded bits, synchronization metadata) · `detect_null*.jsonl` (scores of the unwatermarked images) · `tables/main_<variant>.csv` (TPR@1%FPR and bit accuracy per attack setting).
 
+## License
+
+MIT (see `LICENSE`). The official baseline repositories cloned by `scripts/clone_baselines.sh` keep their own licenses (SFW: CC BY-NC 4.0).
+
 ## Citation
 
 ```
