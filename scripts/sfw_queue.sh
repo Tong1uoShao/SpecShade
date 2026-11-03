@@ -17,7 +17,7 @@ stage(){
 }
 mark "SFW QUEUE START"
 E=final_sfw; C=configs/final_sfw.yaml
-export SDXL_OFFLOAD=${SDXL_OFFLOAD:-1}      # the GPU is shared; keep the SDXL attack engines within ~7 GB
+export SDXL_OFFLOAD=${SDXL_OFFLOAD:-0}      # the GPU is shared; keep the SDXL attack engines within ~7 GB
 for M in sfw_hstr sfw_hsqr; do
   stage gen_$M  $PY -u src/generate.py --exp $E --method $M --n 100 --config $C
   stage atk_$M  $PY -u src/attack.py --exp $E --method $M --blocks key15 --seeds 97,101 --config $C

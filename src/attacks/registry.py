@@ -103,26 +103,39 @@ def run_attacks(images: list[dict], specs: list[AttackSpec], seeds: list[int], c
     by_engine: dict[str, list[AttackSpec]] = {}
     for s in specs:
         by_engine.setdefault(s.engine, []).append(s)
+    import os
+    B = max(1, int(os.environ.get("ATTACK_BATCH", "6")))     # images per call for engines with a batch() method
     for engine, engine_specs in by_engine.items():
         atk = None
         for spec in engine_specs:
             for strength in spec.strengths:
+                jobs = []
                 for seed in seeds:
                     for im in images:
                         stem = Path(im["image"]).stem
                         rel = str(Path(out_dir).relative_to(root) / f"{stem}__{spec.name}_{strength}_{seed}.png")
-                        if rel in done:
-                            continue
-                        if atk is None:
-                            atk = get_attack(engine, cfg)
-                        t0 = time.time()
-                        kw = {"style": spec.style} if spec.style else {}
-                        out = atk(Image.open(root / im["image"]).convert("RGB"), strength, seed, im["prompt"], **kw)
+                        if rel not in done:
+                            jobs.append((seed, im, stem, rel))
+                if not jobs:
+                    continue
+                if atk is None:
+                    atk = get_attack(engine, cfg)
+                kw = {"style": spec.style} if spec.style else {}
+                step = B if hasattr(atk, "batch") else 1
+                for b0 in range(0, len(jobs), step):
+                    chunk = jobs[b0:b0 + step]
+                    t0 = time.time()
+                    ims = [Image.open(root / im["image"]).convert("RGB") for _, im, _, _ in chunk]
+                    if step > 1:
+                        outs = atk.batch(ims, strength, [s for s, _, _, _ in chunk], [im["prompt"] for _, im, _, _ in chunk], **kw)
+                    else:
+                        outs = [atk(ims[0], strength, chunk[0][0], chunk[0][1]["prompt"], **kw)]
+                    dt = round((time.time() - t0) / len(chunk), 2)
+                    for (seed, im, stem, rel), out in zip(chunk, outs):
                         out.save(root / rel)
                         append_jsonl(meta_path, {"src_image": im["image"], "src_key": im.get("src_key", stem),
                                                  "attack": spec.name, "engine": engine, "strength": strength,
-                                                 "atk_seed": seed, "image": rel,
-                                                 "t_atk_s": round(time.time() - t0, 2)})
+                                                 "atk_seed": seed, "image": rel, "t_atk_s": dt})
         if atk is not None and atk.heavy:
             atk.free()
             _INSTANCES.pop(engine, None)

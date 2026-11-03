@@ -70,7 +70,12 @@ def main() -> int:
         Z = be.invert_batch([Image.open(ROOT / g["image"]).convert("RGB") for g in batch],
                             steps=cfg["backend"]["inv_steps"]).cpu()
         for g, z in zip(batch, Z):
-            r = method.extract(z.unsqueeze(0))
+            if getattr(method, "needs_ref", False):      # score against the key the image would carry (SFW protocol)
+                ref = method.fixed_payload if method.fixed_payload is not None else \
+                    derive_payload(g["prompt_id"], g["gen_seed"], method.n_bits)
+                r = method.extract(z.unsqueeze(0), ref_payload=ref)
+            else:
+                r = method.extract(z.unsqueeze(0))
             append_jsonl(out, {"image": g["image"], "score": (None if (isinstance(r.score, float) and not np.isfinite(r.score)) else r.score),
                                "accepted": r.accepted, "t_inv_s": round((time.time() - t0) / len(batch), 2)})
         if (b0 // B) % 5 == 0:

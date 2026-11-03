@@ -209,6 +209,16 @@ class SDXLImg2Img:
                         generator=gen).images[0]
         return out.resize((self.size, self.size))
 
+    @torch.no_grad()
+    def batch(self, images: list[Image.Image], prompts: list[str], strength: float, seeds: list[int],
+              guidance_scale: float = 5.0, steps: int = 50) -> list[Image.Image]:
+        """Several images in one pipeline call (one generator per image, so each image gets the same noise as in
+        a single call). At 512 px the single-image call is launch-bound and leaves the GPU mostly idle."""
+        gens = [torch.Generator(device=self.device).manual_seed(int(s)) for s in seeds]
+        out = self.pipe(prompt=list(prompts), image=[im.convert("RGB") for im in images], strength=float(strength),
+                        guidance_scale=float(guidance_scale), num_inference_steps=int(steps), generator=gens).images
+        return [o.resize((self.size, self.size)) for o in out]
+
     def free(self) -> None:
         import gc
         del self.pipe

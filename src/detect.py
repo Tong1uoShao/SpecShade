@@ -115,8 +115,9 @@ def main() -> int:
         for j, zhat in zip(batch, zhats):
             if j["image"] in done:        # cache-only pass: latent saved above, row already written
                 continue
-            res = method.extract(zhat)
             truth = hex_to_bits(j["payload_hex"]) if j["payload_hex"] else None
+            # methods whose official protocol scores against the known message get the reference (SFW)
+            res = method.extract(zhat, ref_payload=truth) if getattr(method, "needs_ref", False) else method.extract(zhat)
             bit_acc = float((res.bits == truth).mean()) if (res.bits is not None and truth is not None) else None
             append_jsonl(det_path, {**j, "bits_dec_hex": bits_to_hex(res.bits) if res.bits is not None else None,
                                     "bit_acc": bit_acc, "accepted": res.accepted,

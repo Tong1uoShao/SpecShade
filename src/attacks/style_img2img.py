@@ -35,6 +35,12 @@ class StyleImg2Img(Attack):
         self._load()
         return self.pipe(image, f"{prompt}, {STYLES[style]}", strength, seed, guidance_scale=5.0, steps=50)
 
+    def batch(self, images: list[Image.Image], strength: float, seeds: list[int], prompts: list[str],
+              style: str = "anime") -> list[Image.Image]:
+        """Batched form of __call__ (per-image prompt and seed)."""
+        self._load()
+        return self.pipe.batch(images, [f"{p}, {STYLES[style]}" for p in prompts], strength, seeds, guidance_scale=5.0, steps=50)
+
     def free(self) -> None:
         if self.pipe is not None:
             self.pipe.free()

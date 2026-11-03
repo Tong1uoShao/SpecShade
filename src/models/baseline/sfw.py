@@ -183,8 +183,12 @@ class SFWWM(WatermarkMethod):
         z[z == float("-inf")] = -4.0
         return z
 
+    needs_ref = True        # detect.py / detect_null.py pass the key the image carries (official verification protocol)
+
     @torch.no_grad()
-    def extract(self, zT_hat: torch.Tensor) -> ExtractResult:
+    def extract(self, zT_hat: torch.Tensor, ref_payload: np.ndarray | None = None) -> ExtractResult:
+        """score = -L1 distance to the key of ref_payload (verification, as in the official code); without a reference,
+        -min distance over all keys (identification). bits = index of the nearest key either way."""
         z = zT_hat.detach().cpu().float()
         cf = _fft(z[CEN])[0]                                                                # (4, 44, 44)
         if self.variant == "hstr":
@@ -194,5 +198,10 @@ class SFWWM(WatermarkMethod):
             t = cf[CH_TREE, 1:1 + QR_LEN, 23:23 + QR_HALF].to(self.dev)                      # rows 11:53, cols 33:54 on the 64 grid
             d = (self.Q - t[None]).abs().mean(dim=(1, 2))
         k = int(torch.argmin(d))
-        return ExtractResult(bits=self._bits(k), llr=None, accepted=None, score=-float(d[k]),
-                             meta={"idx": k, "d_min": float(d[k]), "d_med": float(d.median())})
+        meta = {"idx": k, "d_min": float(d[k]), "d_med": float(d.median())}
+        score = -float(d[k])
+        if ref_payload is not None:
+            r = self._idx(ref_payload)
+            score = -float(d[r])
+            meta.update(d_ref=float(d[r]), ident_ok=bool(k == r))
+        return ExtractResult(bits=self._bits(k), llr=None, accepted=None, score=score, meta=meta)

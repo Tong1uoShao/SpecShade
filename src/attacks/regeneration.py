@@ -34,6 +34,14 @@ class DiffusionRegen(Attack):
             im = self.pipe(im, "", 0.3, int(seed) + k, guidance_scale=1.0, steps=50)
         return im
 
+    def batch(self, images: list[Image.Image], strength: float, seeds: list[int], prompts=None) -> list[Image.Image]:
+        """Batched form of __call__ (same cycles and per-image seeds)."""
+        self._load()
+        ims = [im.convert("RGB") for im in images]
+        for k in range(int(strength)):
+            ims = self.pipe.batch(ims, [""] * len(ims), 0.3, [int(s) + k for s in seeds], guidance_scale=1.0, steps=50)
+        return ims
+
     def free(self) -> None:
         if self.pipe is not None:
             self.pipe.free()

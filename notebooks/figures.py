@@ -29,8 +29,8 @@ COL = {"ours": "#1f5fbf", "gs": "#7a7a7a", "gm": "#b54708", "accent": "#2e8b57",
 ONE_COL, TWO_COL = 3.5, 7.16      # IEEE column / page width in inches
 
 
-def table(exp: str, method: str) -> pd.DataFrame:
-    for name in ("main_no_ecc.csv", "main_soft.csv"):
+def table(exp: str, method: str, variant: str | None = None) -> pd.DataFrame:
+    for name in ((f"main_{variant}.csv",) if variant else ("main_no_ecc.csv", "main_soft.csv")):
         p = RES / exp / "tables" / name
         if p.exists():
             df = pd.read_csv(p)
@@ -65,7 +65,7 @@ SURVIVAL = {  # cell -> per-element sign survival p (measured on GS images, anim
 
 def fig_law():
     gs16, gs256 = table("final", "gaussian_shading"), table("final_gs256", "gaussian_shading")
-    fig, (a, b) = plt.subplots(1, 2, figsize=(ONE_COL * 2, 2.25), gridspec_kw={"width_ratios": [1, 1.25]})
+    fig, (a, b) = plt.subplots(1, 2, figsize=(ONE_COL * 2, 2.0), gridspec_kw={"width_ratios": [1, 1.25]})
     errs = []
     for df, n, mk, lab in ((gs16, 1024, "o", "GS-16 ($n{=}1024$)"), (gs256, 64, "s", "GS-256 ($n{=}64$)")):
         xs, ys = [], []
@@ -134,7 +134,7 @@ def fig_ablation():
     cells = [("regen_sd:2.0", "regen.\n$\\times$2"), ("regen_sd:4.0", "regen.\n$\\times$4"),
              ("img2img_anime:0.5", "img2img\n0.5"), ("img2img_anime:0.7", "img2img\n0.7")]
     variants = [("s_hard", "spatial, hard"), ("s_soft", "spatial, soft"), ("f_hard", "Fourier, hard"), ("f_soft", "Fourier, soft")]
-    fig = plt.figure(figsize=(TWO_COL, 2.3))
+    fig = plt.figure(figsize=(TWO_COL, 2.15))
     gs = fig.add_gridspec(1, 4, width_ratios=[1.5, 1.15, 0.85, 1.2], wspace=0.4, left=0.05, right=0.995, bottom=0.2, top=0.88)
     a, b, c = fig.add_subplot(gs[0]), fig.add_subplot(gs[1]), fig.add_subplot(gs[2])
     w = 0.2
@@ -199,9 +199,9 @@ GM_KEYS = [("Regen. $\\times1$", ["regen_sd@1.0"]), ("Regen. $\\times2$", ["rege
            ("Mirror", ["mirror@0.0", "mirror@0"]), ("img2img + crop", ["combo_style_crop@1.0", "combo_style_crop@1"])]
 
 
-def _opt(exp, method):
+def _opt(exp, method, variant=None):
     try:
-        return table(exp, method)
+        return table(exp, method, variant)
     except FileNotFoundError:
         return None
 
@@ -225,17 +225,21 @@ def fig_gm():
     import json
     nulls = sorted(json.loads(l)["score"] for l in open(RES / gm_e / "gaussmarker_full/detect_null.jsonl"))
     gm_tau = nulls[int(0.99 * len(nulls)) - 1]       # its 1%-FPR threshold on the bit agreement (as in tables.py)
+    # SFW (HSQR, verification protocol: the detector is given the key) and MaXsive (one fixed watermark), re-implemented
+    # from the official code (src/models/baseline/sfw.py, maxsive.py); neither carries a comparable 256-bit payload
+    sfw, mx = [_opt("final_sfw", "sfw_hsqr", "known")], [_opt("final_maxsive", "maxsive")]
     series = [("\\method-256 (ours)".replace("\\method", "SpecShade"), ours, COL["ours"], "o"), ("GS-256", gs, COL["gs"], "s"),
-              ("GaussMarker-256", [gm], COL["gm"], "D")]
-    x = np.arange(len(GM_KEYS)); w = 0.27
-    fig, (a, b) = plt.subplots(2, 1, figsize=(TWO_COL, 3.4), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]})
+              ("GaussMarker-256", [gm], COL["gm"], "D"), ("SFW (HSQR)", sfw, COL["accent"], None), ("MaXsive", mx, "#8e44ad", None)]
+    x = np.arange(len(GM_KEYS)); w = 0.16
+    fig, (a, b) = plt.subplots(2, 1, figsize=(TWO_COL, 2.95), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]})
     for k, (lab, dfs, c, mk) in enumerate(series):
         tpr = [_pick(dfs, cells, "tpr_1fpr") for _, cells in GM_KEYS]
-        acc = [_pick(dfs, cells, "bit_acc_all") for _, cells in GM_KEYS]
-        a.bar(x + (k - 1) * w, tpr, w, color=c, label=lab, edgecolor="none")
-        b.plot(x + (k - 1) * w, acc, mk, ms=4, color=c, label=lab, ls="none")
+        a.bar(x + (k - 2) * w, tpr, w, color=c, label=lab, edgecolor="none")
+        if mk is not None:
+            acc = [_pick(dfs, cells, "bit_acc_all") for _, cells in GM_KEYS]
+            b.plot(x + (k - 2) * w, acc, mk, ms=4, color=c, label=lab, ls="none")
     a.set_ylabel("TPR@1%FPR"); a.set_ylim(0, 1.05); a.grid(axis="y", alpha=0.25, lw=0.5)
-    a.legend(ncol=3, loc="lower left", frameon=False, bbox_to_anchor=(0.0, 1.0))
+    a.legend(ncol=5, loc="lower left", frameon=False, bbox_to_anchor=(0.0, 1.0), fontsize=7, handlelength=1.2, columnspacing=1.0)
     b.axhline(0.5, color="k", lw=0.6, ls=":"); b.text(-0.45, 0.505, "chance", fontsize=6.5, ha="left", va="bottom")
     b.axhline(gm_tau, color=COL["gm"], lw=0.9, ls="--")
     b.text(-0.45, gm_tau + 0.006, rf"GaussMarker $\tau$ ({gm_tau:.3f})", fontsize=6.5, color=COL["gm"], ha="left", va="bottom")
@@ -259,7 +263,7 @@ def fig_gm():
 def fig_geo():
     geo, geof, gsg = table("geo256", "stylering"), table("geo256f", "stylering"), table("geo_gs256", "gaussian_shading")
     sw256, sw16 = table("fr256_cropmin", "stylering"), table("fr2_cropmin2", "stylering")
-    fig, (a, b, c) = plt.subplots(1, 3, figsize=(TWO_COL, 2.15))
+    fig, (a, b, c) = plt.subplots(1, 3, figsize=(TWO_COL, 1.9))
     ints, halves = [15, 30, 45, 75, 90], [7.5, 22.5, 37.5, 67.5]
     allang = sorted(ints + halves)
     def rot(df, ang, col):
