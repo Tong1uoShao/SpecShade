@@ -6,6 +6,7 @@ Usage (GPU): python -u src/detect_null.py --exp main --method stylering [--decod
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -31,6 +32,8 @@ def main() -> int:
     ap.add_argument("--override", nargs="*", default=[])
     ap.add_argument("--decode_variant", default=None, help="must match the detect.py run being calibrated")
     ap.add_argument("--none_exp", default=None, help="experiment whose 'none' images to decode (default: --exp)")
+    ap.add_argument("--cache_latents", action="store_true",
+                    help="cache the inverted latents under results/<none_exp>/none/inv (shared by all detectors)")
     args = ap.parse_args()
     cfg = load_config(ROOT / args.config)
     for kv in args.override:
@@ -63,13 +66,32 @@ def main() -> int:
         return 0
     be = SDBackend(model_id=cfg["backend"]["model_id"], prefer_fp16=cfg["backend"]["prefer_fp16"], size=cfg["backend"]["size"])
     method = build_method(args.method, cfg, be)
+    inv_dir = None
+    if args.cache_latents:
+        inv_dir = ROOT / cfg["paths"]["results"] / (args.none_exp or args.exp) / "none" / "inv"
+        inv_dir.mkdir(parents=True, exist_ok=True)
     B = 8
     for b0 in range(0, len(todo), B):
         batch = todo[b0:b0 + B]
         t0 = time.time()
-        Z = be.invert_batch([Image.open(ROOT / g["image"]).convert("RGB") for g in batch],
-                            steps=cfg["backend"]["inv_steps"]).cpu()
-        for g, z in zip(batch, Z):
+        zh: list = [None] * len(batch)
+        need = []
+        for k, g in enumerate(batch):
+            c = (inv_dir / (Path(g["image"]).stem + ".pt")) if inv_dir else None
+            if c is not None and c.exists():
+                zh[k] = torch.load(c, map_location="cpu", weights_only=True)[0]
+            else:
+                need.append(k)
+        if need:
+            Z = be.invert_batch([Image.open(ROOT / batch[k]["image"]).convert("RGB") for k in need],
+                                steps=cfg["backend"]["inv_steps"]).cpu()
+            for z, k in zip(Z, need):
+                zh[k] = z
+                if inv_dir:
+                    torch.save(z.unsqueeze(0), inv_dir / (Path(batch[k]["image"]).stem + ".pt"))
+        t_inv = round((time.time() - t0) / len(batch), 2)
+        for g, z in zip(batch, zh):
+            t1 = time.time()
             if getattr(method, "needs_ref", False):      # score against the key the image would carry (SFW protocol)
                 ref = method.fixed_payload if method.fixed_payload is not None else \
                     derive_payload(g["prompt_id"], g["gen_seed"], method.n_bits)
@@ -77,7 +99,8 @@ def main() -> int:
             else:
                 r = method.extract(z.unsqueeze(0))
             append_jsonl(out, {"image": g["image"], "score": (None if (isinstance(r.score, float) and not np.isfinite(r.score)) else r.score),
-                               "accepted": r.accepted, "t_inv_s": round((time.time() - t0) / len(batch), 2)})
+                               "accepted": r.accepted, "t_inv_s": t_inv, "t_det_s": round(time.time() - t1, 3),
+                               **({"meta": r.meta} if (r.meta and os.environ.get("NULL_META") == "1") else {})})
         if (b0 // B) % 5 == 0:
             log.info(f"[{min(b0+B, len(todo))}/{len(todo)}] accepted={r.accepted} score={r.score}")
     log.info("NULL DONE")

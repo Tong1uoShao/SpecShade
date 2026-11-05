@@ -3,7 +3,7 @@
 # Reads real detections (exps combo256, combo_gs256) and thresholds from their null runs. Same visual style as the
 # framework figure (handwritten italic labels, pastel dashed boxes, drop shadows); the result boxes are sized from the
 # rendered text extents, so no line can leave its box. Runs on the GPU node:
-#   FIG_OUT=$FIG_OUT FONT_DIR=$FONT_DIR PID=p0014 python notebooks/fig_teaser.py
+#   FIG_OUT=$FIG_OUT FONT_DIR=fonts PID=p0014 python notebooks/fig_teaser.py
 
 # %%
 import json
@@ -21,7 +21,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "results"
 OUT = Path(os.environ.get("FIG_OUT", ROOT.parent / "docs" / "manuscripts" / "figs"))
-FONTS = Path(os.environ.get("FONT_DIR", "$FONT_DIR"))
+FONTS = Path(os.environ.get("FONT_DIR", "fonts"))
 PID = os.environ.get("PID", "p0014")
 for f in FONTS.glob("ComicNeue-*.ttf"):
     font_manager.fontManager.addfont(str(f))

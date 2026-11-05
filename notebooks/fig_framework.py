@@ -20,7 +20,7 @@ from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Polygon,
 ROOT = Path(__file__).resolve().parents[1]
 A = Path(os.environ.get("ASSET_OUT", ROOT.parent / "docs" / "manuscripts" / "figs" / "fw_assets"))
 OUT = Path(os.environ.get("FIG_OUT", ROOT.parent / "docs" / "manuscripts" / "figs"))
-FONTS = Path(os.environ.get("FONT_DIR", "$FONT_DIR"))
+FONTS = Path(os.environ.get("FONT_DIR", "fonts"))
 RAW = np.load(A / "raw.npz")
 for f in FONTS.glob("ComicNeue-*.ttf"):
     font_manager.fontManager.addfont(str(f))

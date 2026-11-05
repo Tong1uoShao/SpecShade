@@ -117,12 +117,14 @@ def main() -> int:
                 continue
             truth = hex_to_bits(j["payload_hex"]) if j["payload_hex"] else None
             # methods whose official protocol scores against the known message get the reference (SFW)
+            t1 = time.time()
             res = method.extract(zhat, ref_payload=truth) if getattr(method, "needs_ref", False) else method.extract(zhat)
+            t_det = round(time.time() - t1, 3)                              # extraction incl. all searches
             bit_acc = float((res.bits == truth).mean()) if (res.bits is not None and truth is not None) else None
             append_jsonl(det_path, {**j, "bits_dec_hex": bits_to_hex(res.bits) if res.bits is not None else None,
                                     "bit_acc": bit_acc, "accepted": res.accepted,
                                     "score": (None if (isinstance(res.score, float) and np.isnan(res.score)) else res.score),
-                                    "n_corrected": res.n_corrected, "t_inv_s": t_inv,
+                                    "n_corrected": res.n_corrected, "t_inv_s": t_inv, "t_det_s": t_det,
                                     **({"meta": res.meta} if res.meta else {})})
         if (b0 // B) % 10 == 0:
             log.info(f"[{min(b0+B, len(todo))}/{len(todo)}] {batch[-1]['kind']} {batch[-1]['attack']} "

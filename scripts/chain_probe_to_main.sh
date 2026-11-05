@@ -1,7 +1,7 @@
 #!/bin/bash
 # Runs ON THE GPU NODE (nohup): wait for the newest probe log to say ALL DONE, then launch
 # main-experiment pass 1. Independent of any ssh session.
-CODE=/root/workspace/stylering/code
+CODE=$CODE_DIR
 cd $CODE || exit 1
 CHAIN=$CODE/logs/chain.log
 echo "[$(date '+%F %T')] chain armed" >> $CHAIN

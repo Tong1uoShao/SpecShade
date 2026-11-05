@@ -40,6 +40,14 @@ def table(exp: str, method: str, variant: str | None = None) -> pd.DataFrame:
     raise FileNotFoundError(f"{exp}/{method}")
 
 
+def _first(*exps, variant=None):
+    """The first experiment whose tables exist (unified-detector re-runs first, the original runs as fallback)."""
+    for e in exps:
+        if (RES / e / "tables" / (f"main_{variant}.csv" if variant else "main_no_ecc.csv")).exists():
+            return e
+    return exps[-1]
+
+
 def fam(df: pd.DataFrame, attack: str, strength: str, col: str) -> float:
     """Mean over the style variants of an attack family (e.g. img2img_anime/comic/watercolor@0.5)."""
     rows = [c for c in df.index if (c.startswith(attack + "_") or c.split("@")[0] == attack) and c.endswith("@" + strength)]
@@ -127,25 +135,28 @@ def fig_croplimit():
 
 # %%
 def fig_ablation():
-    # (a), (b): the same inverted noise of 100 SpecShade-256 images (src/proto_freq_survival.py, results/freq_survival2)
-    # read with a GS-style spatial tiling or the Fourier ring cells, by hard or magnitude-weighted votes; sign survival per ring.
+    # (a): real embeddings, 256 bits each, generated / attacked / inverted separately (15 key attacks): GS-256 with the hard
+    #   majority (final_gs256q) and with a magnitude-weighted vote (final_gs256s), SpecShade-256 with hard cell reads
+    #   (final256h) and with magnitude weighting (final256). (b): sign survival per ring of the same inverted noise of 100
+    #   SpecShade-256 images (src/proto_freq_survival.py, results/freq_survival2).
     import json
     S = json.load(open(RES / "freq_survival2" / "summary.json"))["attacks"]
-    cells = [("regen_sd:2.0", "regen.\n$\\times$2"), ("regen_sd:4.0", "regen.\n$\\times$4"),
-             ("img2img_anime:0.5", "img2img\n0.5"), ("img2img_anime:0.7", "img2img\n0.7")]
-    variants = [("s_hard", "spatial, hard"), ("s_soft", "spatial, soft"), ("f_hard", "Fourier, hard"), ("f_soft", "Fourier, soft")]
-    fig = plt.figure(figsize=(TWO_COL, 2.15))
+    cells = [(["regen_sd@2.0", "regen_sd@2"], "regen.\n$\\times$2"), (["regen_sd@4.0", "regen_sd@4"], "regen.\n$\\times$4"),
+             (["img2img_anime@0.3"], "img2img\n0.3"), (["img2img_anime@0.5"], "img2img\n0.5")]
+    variants = [(_opt("final_gs256q", "gaussian_shading", "soft"), "spatial, hard"), (_opt("final_gs256s", "gaussian_shading", "soft"), "spatial, soft"),
+                (_opt("final256h", "stylering", "no_ecc"), "Fourier, hard"), (_opt(_first("final256ua", "final256"), "stylering", "no_ecc"), "Fourier, soft")]
+    fig = plt.figure(figsize=(TWO_COL, 2.0))
     gs = fig.add_gridspec(1, 4, width_ratios=[1.5, 1.15, 0.85, 1.2], wspace=0.4, left=0.05, right=0.995, bottom=0.2, top=0.88)
     a, b, c = fig.add_subplot(gs[0]), fig.add_subplot(gs[1]), fig.add_subplot(gs[2])
     w = 0.2
-    for i, (key, lab) in enumerate(variants):
-        ys = [S[k][key] for k, _ in cells]
+    for i, (df, lab) in enumerate(variants):
+        ys = [_pick([df], ks, "tpr_1fpr") for ks, _ in cells]
         shade = ["#c7c7c7", "#8f8f8f", "#8fb3e6", COL["ours"]][i]
         a.bar(np.arange(len(cells)) + (i - 1.5) * w, ys, w, color=shade, label=lab, edgecolor="k", lw=0.3)
     a.set_xticks(range(len(cells))); a.set_xticklabels([lab for _, lab in cells], fontsize=7); a.set_xlim(-0.6, len(cells) - 0.4)
-    a.set_ylim(0.5, 0.82); a.set_yticks([0.5, 0.6, 0.7, 0.8]); a.set_ylabel("bit accuracy (256 bits)")
+    a.set_ylim(0, 1.3); a.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0]); a.set_ylabel("TPR@1%FPR (256 bits)")
     a.set_title("(a) embedding domain $\\times$ vote type")
-    a.legend(loc="upper right", frameon=False, ncol=1, fontsize=7, handlelength=1.0, labelspacing=0.3)
+    a.legend(loc="upper right", frameon=False, ncol=2, fontsize=7, handlelength=1.0, labelspacing=0.3, columnspacing=0.8)
     rings = np.arange(1, 45)
     for k, lab, col in (("regen_sd:2.0", "regen. $\\times$2", COL["ours"]), ("img2img_anime:0.5", "img2img 0.5", COL["accent"])):
         b.plot(rings, S[k]["hard"], color=col, lw=1.0, label=lab)
@@ -217,7 +228,7 @@ def _pick(dfs, cells, col):
 
 
 def fig_gm():
-    ours = [_opt("final256", "stylering"), _opt("geo256", "stylering"), _opt("combo256", "stylering")]
+    ours = [_opt(_first("final256ua", "final256"), "stylering"), _opt(_first("geo256u", "geo256"), "stylering"), _opt(_first("combo256u", "combo256"), "stylering")]
     gs = [_opt("final_gs256q", "gaussian_shading"), _opt("combo_gs256", "gaussian_shading")]
     cand = [(_opt(e, "gaussmarker_full"), e) for e in ("gm256a", "gm256")]
     cand = [(df, e) for df, e in cand if df is not None]
@@ -231,7 +242,7 @@ def fig_gm():
     series = [("\\method-256 (ours)".replace("\\method", "SpecShade"), ours, COL["ours"], "o"), ("GS-256", gs, COL["gs"], "s"),
               ("GaussMarker-256", [gm], COL["gm"], "D"), ("SFW (HSQR)", sfw, COL["accent"], None), ("MaXsive", mx, "#8e44ad", None)]
     x = np.arange(len(GM_KEYS)); w = 0.16
-    fig, (a, b) = plt.subplots(2, 1, figsize=(TWO_COL, 2.95), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]})
+    fig, (a, b) = plt.subplots(2, 1, figsize=(TWO_COL, 2.8), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]})
     for k, (lab, dfs, c, mk) in enumerate(series):
         tpr = [_pick(dfs, cells, "tpr_1fpr") for _, cells in GM_KEYS]
         a.bar(x + (k - 2) * w, tpr, w, color=c, label=lab, edgecolor="none")
@@ -263,7 +274,7 @@ def fig_gm():
 def fig_geo():
     geo, geof, gsg = table("geo256", "stylering"), table("geo256f", "stylering"), table("geo_gs256", "gaussian_shading")
     sw256, sw16 = table("fr256_cropmin", "stylering"), table("fr2_cropmin2", "stylering")
-    fig, (a, b, c) = plt.subplots(1, 3, figsize=(TWO_COL, 1.9))
+    fig, (a, b, c) = plt.subplots(1, 3, figsize=(TWO_COL, 1.75))
     ints, halves = [15, 30, 45, 75, 90], [7.5, 22.5, 37.5, 67.5]
     allang = sorted(ints + halves)
     def rot(df, ang, col):

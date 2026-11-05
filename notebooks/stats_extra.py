@@ -62,11 +62,20 @@ def ci_halfwidth(pos, neg, fpr=0.01, n=2000):
     return float((np.quantile(b, 0.975) - np.quantile(b, 0.025)) / 2)
 
 
+def _first(*exps, method="stylering", det="detect_no_ecc.jsonl"):
+    """The first experiment whose detections are complete (unified-detector re-runs first, original runs as fallback)."""
+    for e in exps:
+        d, a = RES / e / method / det, RES / e / method / "atk.jsonl"
+        if d.exists() and a.exists() and sum(1 for _ in open(d)) >= sum(1 for _ in open(a)):
+            return e
+    return exps[-1]
+
+
 # sources: list of (experiment, method, detections file, null file); the first source that holds a cell wins
 SRC = {
-    "ours": [("final256", "stylering", "detect_no_ecc.jsonl", "detect_null_no_ecc.jsonl"),
-             ("geo256", "stylering", "detect_no_ecc.jsonl", "detect_null_no_ecc.jsonl"),
-             ("combo256", "stylering", "detect_no_ecc.jsonl", "detect_null_no_ecc.jsonl")],
+    "ours": [(_first("final256ua", "final256"), "stylering", "detect_no_ecc.jsonl", "detect_null_no_ecc.jsonl"),
+             (_first("geo256u", "geo256"), "stylering", "detect_no_ecc.jsonl", "detect_null_no_ecc.jsonl"),
+             (_first("combo256u", "combo256"), "stylering", "detect_no_ecc.jsonl", "detect_null_no_ecc.jsonl")],
     "gs": [("final_gs256q", "gaussian_shading", "detect.jsonl", "detect_null.jsonl"),
            ("combo_gs256", "gaussian_shading", "detect.jsonl", "detect_null.jsonl"),
            ("geo_gs256", "gaussian_shading", "detect.jsonl", "detect_null.jsonl")],
@@ -114,12 +123,52 @@ def ci_grouped(pos, pid, neg, fpr=0.01, n=2000):
     return float(np.quantile(b, 0.025)), float(np.quantile(b, 0.975))
 
 
+def cp_interval(k, n, alpha=0.05):
+    from scipy.stats import beta
+    lo = float(beta.ppf(alpha / 2, k, n - k + 1)) if k > 0 else 0.0
+    hi = float(beta.ppf(1 - alpha / 2, k + 1, n - k)) if k < n else 1.0
+    return lo, hi
+
+
+def hits_by_prompt(method, attack, strength):
+    """{prompt id: [hit, ...]} at the 1%-FPR threshold of the method, or None."""
+    for (pos_by_cell, neg), pid_by_cell in zip(DATA[method], PIDS[method]):
+        pos = pos_by_cell.get((attack, round(strength, 4)))
+        if pos:
+            thr = np.quantile(neg, 0.99, method="higher")
+            d = {}
+            for p, pid in zip(pos, pid_by_cell[(attack, round(strength, 4))]):
+                d.setdefault(pid, []).append(float(p > thr))
+            return d
+    return None
+
+
+def diff_interval(m_a, m_b, attack, strength, n=2000):
+    """95% paired bootstrap interval of TPR(m_a) - TPR(m_b), resampling prompts (both seeds of a prompt together)."""
+    ha, hb = hits_by_prompt(m_a, attack, strength), hits_by_prompt(m_b, attack, strength)
+    if ha is None or hb is None:
+        return None
+    pids = sorted(set(ha) & set(hb))
+    A = np.asarray([np.mean(ha[p]) for p in pids]); B = np.asarray([np.mean(hb[p]) for p in pids])
+    idx = RNG.integers(0, len(pids), (n, len(pids)))
+    d = (A[idx] - B[idx]).mean(axis=1)
+    return float(np.quantile(d, 0.025)), float(np.quantile(d, 0.975)), float(A.mean() - B.mean())
+
+
 def stats_grouped(method, attack, strength):
     for (pos_by_cell, neg), pid_by_cell in zip(DATA[method], PIDS[method]):
         pos = pos_by_cell.get((attack, round(strength, 4)))
         if pos:
-            lo, hi = ci_grouped(pos, pid_by_cell[(attack, round(strength, 4))], neg)
-            return {"tpr1": tpr(pos, neg, 0.01), "lo": lo, "hi": hi}
+            pid = np.asarray(pid_by_cell[(attack, round(strength, 4))])
+            thr = np.quantile(neg, 0.99, method="higher"); k = int((np.asarray(pos) > thr).sum()); n = len(pos)
+            lo, hi = cp_interval(k, n)                                   # Clopper-Pearson over the images (reference)
+            glo, ghi = ci_grouped(pos, pid, neg)                         # bootstrap over the prompts (both seeds together)
+            n_cl = len(np.unique(pid))
+            if k in (0, n):          # degenerate bootstrap: Clopper-Pearson with the prompts as the independent units
+                ilo, ihi = cp_interval(k * n_cl // n, n_cl)
+            else:
+                ilo, ihi = glo, ghi
+            return {"tpr1": tpr(pos, neg, 0.01), "lo": lo, "hi": hi, "glo": glo, "ghi": ghi, "ilo": ilo, "ihi": ihi, "n": n, "n_cl": n_cl}
     return None
 
 
@@ -140,7 +189,7 @@ def best(vals, nd):
 
 
 rows, acc, WINS = [], {m: {"auc": [], "tpr01": [], "tpr1": []} for m in M}, {m: 0 for m in M}
-ABOVE = {"gs": 0, "gm": 0}          # key attacks on which the interval of SpecShade lies entirely above that of the other method
+ABOVE = {"gs": 0, "gm": 0}          # key attacks on which the paired difference interval TPR(ours) - TPR(other) excludes zero (in favor of ours)
 for lab, a, s_ in KEYS:
     st = {m: stats(m, a, s_) for m in M}
     sg = {m: stats_grouped(m, a, s_) for m in M}
@@ -151,7 +200,8 @@ for lab, a, s_ in KEYS:
     for m, v in zip(M, _v):
         WINS[m] += int(v >= np.nanmax(_v) - 0.0005)
     for m in ("gs", "gm"):
-        if sg[m] and sg["ours"]["lo"] > sg[m]["hi"]:
+        di = diff_interval("ours", m, a, s_)
+        if di and di[0] > 0:
             ABOVE[m] += 1
     aucs = best(_v, 3)
     top = max(sg[m]["tpr1"] for m in M3 if sg[m])
@@ -159,7 +209,7 @@ for lab, a, s_ in KEYS:
     for m in M3:
         if not sg[m]:
             tp.append("--"); continue
-        s = f"{sg[m]['tpr1']:.2f} [{sg[m]['lo']:.2f}, {sg[m]['hi']:.2f}]"
+        s = f"{sg[m]['tpr1']:.2f} [{sg[m]['ilo']:.2f}, {sg[m]['ihi']:.2f}]"
         tp.append(f"\\textbf{{{s}}}" if sg[m]["tpr1"] >= top - 0.005 else s)
     rows.append(f"{lab} & " + " & ".join(aucs) + " & " + " & ".join(tp) + "\\\\")
 mean = lambda m, k: float(np.nanmean(acc[m][k]))
@@ -170,7 +220,7 @@ N_BOTH = len(both)
 rows.append("\\midrule\nAverage & " + " & ".join(avg_a) + " & " + " & ".join(avg_t) + "\\\\")
 body = r"""\begin{table*}[t]
 \centering
-\caption{AUC of the five compared methods and TPR@1\%FPR with its 95\% confidence interval of the 256-bit methods on the 15 key attacks. The intervals are obtained by a bootstrap over prompts, so that the two attacked versions of a prompt are resampled together. Best in bold.}
+\caption{AUC of the five compared methods and TPR@1\%FPR with its 95\% interval of the 256-bit methods on the 15 key attacks. The interval is a bootstrap over the 100 prompts in which both attacked versions of a prompt are resampled together (Clopper--Pearson over the 100 prompts when every image or none is detected). Style-transfer rows use the anime style, whereas Table~\ref{tab:main} averages three styles. Best in bold.}
 \label{tab:stats}
 \setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{lcccccccc}
@@ -234,16 +284,25 @@ def ident(method, attack, strength):
         if rows:
             dist = np.asarray([hamming(r["payload_hex"], r["bits_dec_hex"]) if r.get("bits_dec_hex") else 128 for r in rows])
             tail = 1.0 - binom.cdf(dist, 256, 0.5)
+            thr = np.quantile(null(e, mm, n), 0.99, method="higher")
+            det = np.asarray([sc(r["score"]) > thr for r in rows], float)
             for N in N_USERS:
                 out[N] = float(np.mean(tail ** (N - 1)))
+                out[f"e2e{N}"] = float(np.mean(det * tail ** (N - 1)))     # detected at 1% FPR and the true user ranked first
             out["acc"] = float(np.mean([float(r["bit_acc"]) if r["bit_acc"] is not None else 0.5 for r in rows]))
             return out
     return None
 
 
 irows, iavg = [], {m: {N: [] for N in N_USERS} for m in ("ours", "gs")}
+IDENT_ROWS = {}
+E2E = {m: [] for m in ("ours", "gs")}
 for lab, a, s_ in KEYS:
     st = {m: ident(m, a, s_) for m in ("ours", "gs")}
+    IDENT_ROWS[lab] = {m: ({"ident6": st[m][10 ** 6], "e2e6": st[m]["e2e1000000"]} if st[m] else None) for m in ("ours", "gs")}
+    for m in ("ours", "gs"):
+        if st[m]:
+            E2E[m].append(st[m]["e2e1000000"])
     vals = []
     for N in N_USERS:
         v = [st[m][N] if st[m] else float("nan") for m in ("ours", "gs")]
@@ -270,7 +329,45 @@ Attack & \textbf{\method} & GS & \textbf{\method} & GS\\
 \end{table}
 """
 (OUT / "tab_ident.tex").write_text("% generated by code/notebooks/stats_extra.py -- do not edit\n" + ibody)
+(RES / "ident_rows.json").write_text(json.dumps({"rows": IDENT_ROWS, "avg": {m: {"ident6": float(np.mean(iavg[m][10 ** 6])), "e2e6": float(np.mean(E2E[m]))} for m in ("ours", "gs")}}, indent=1))
 print("\n".join(irows))
+
+# %% Monte-Carlo check of the analytic identification rate (random codebooks of 10^3 users)
+POP = np.array([bin(i).count("1") for i in range(256)], dtype=np.int16)
+N_CODEBOOKS = 20
+
+
+def _bits(hexs):
+    return np.asarray([np.frombuffer(bytes.fromhex(h.split(":")[-1].zfill(64)), dtype=np.uint8) for h in hexs])
+
+
+def mc_ident(method, attack, strength, N=1000):
+    """Empirical Top-1 rate among N users: the true identifier is nearest to the decoded string for N_CODEBOOKS random
+    codebooks (ties count as failures, as in the analytic (1 - F(d))^(N-1)); undecodable rows count as failures."""
+    for e, mm, d, n in SRC[method]:
+        rows = [r for r in jsonl(RES / e / mm / d) if r.get("kind") != "clean" and r["attack"] == attack and abs(float(r["strength"]) - strength) < 1e-4]
+        if rows:
+            ok = [i for i, r in enumerate(rows) if r.get("bits_dec_hex")]
+            if not ok:
+                return 0.0
+            T, D = _bits([rows[i]["payload_hex"] for i in ok]), _bits([rows[i]["bits_dec_hex"] for i in ok])
+            d_true = POP[T ^ D].sum(1)
+            succ = 0.0
+            for _ in range(N_CODEBOOKS):
+                C = RNG.integers(0, 256, (N - 1, 32), dtype=np.uint8)
+                dmin = np.array([POP[C ^ D[i]].sum(1).min() for i in range(len(ok))])
+                succ += float((dmin > d_true).sum())
+            return succ / N_CODEBOOKS / len(rows)
+    return None
+
+
+MC_DIFF = []
+for lab, a, s_ in KEYS:
+    for m in ("ours", "gs"):
+        st, mc = ident(m, a, s_), mc_ident(m, a, s_)
+        if st and mc is not None:
+            MC_DIFF.append(abs(st[10 ** 3] - mc))
+print("identification: max |analytic - Monte Carlo| at 10^3 users =", max(MC_DIFF))
 
 # %% all non-geometric cells of Table I: averages and bootstrap confidence intervals
 ours_cells = sorted(DATA["ours"][0][0].keys())
@@ -291,6 +388,7 @@ for a, s in nongeo:
         ghw.append((r["hi"] - r["lo"]) / 2)
 nm["CiGroupMax"] = max(ghw); nm["CiGroupMedian"] = float(np.median(ghw))
 nm["CiAboveGS"] = ABOVE["gs"]; nm["CiAboveGM"] = ABOVE["gm"]
+nm["CiIdentMcMaxDiff"] = max(MC_DIFF); nm["NIdentCodebooks"] = N_CODEBOOKS
 for m, tag in (("sfw", "SFW"), ("mx", "MX"), ("gm", "GM"), ("ours", "Ours"), ("gs", "GS")):
     if acc[m]["tpr1"]:
         nm[f"KeyAvgTpr{tag}"] = float(np.nanmean(acc[m]["tpr1"])); nm[f"KeyAvgAuc{tag}"] = float(np.nanmean(acc[m]["auc"]))
@@ -301,6 +399,8 @@ nm["FprSplitMeanOurs"] = HELD["ours"]["fpr_mean"] * 100; nm["FprSplitMeanGS"] = 
 nm["TprSplitDmaxOurs"] = HELD["ours"]["tpr_dmax"]; nm["TprSplitDmaxGS"] = HELD["gs"]["tpr_dmax"]
 for N, tag in zip(N_USERS, ("Thousand", "Million")):
     nm[f"Ident{tag}Ours"] = float(np.mean(iavg["ours"][N])); nm[f"Ident{tag}GS"] = float(np.mean(iavg["gs"][N]))
+nm["IdentEtoeMillionOurs"] = float(np.mean(E2E["ours"])); nm["IdentEtoeMillionGS"] = float(np.mean(E2E["gs"]))
+nm["IdentRegenTwoEtoeOurs"] = ident("ours", "regen_sd", 2.0)["e2e1000000"]
 for lab, a, s_, tag in (("", "regen_sd", 2.0, "RegenTwo"), ("", "img2img_anime", 0.5, "ImgFive"), ("", "regen_sd", 4.0, "RegenFour")):
     r = ident("ours", a, s_)
     nm[f"Ident{tag}MillionOurs"] = r[10 ** 6]; nm[f"Ident{tag}ThousandOurs"] = r[10 ** 3]

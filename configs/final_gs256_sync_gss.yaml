@@ -1,0 +1,62 @@
+# Gaussian Shading 256 bit (ch=1, hw=8, 64 copies per bit) decoded with the SAME detection-side synchronisation as
+# SpecShade's unified detector (rotation search, zoom+shift search 0.18-1.0 / +-32 px, flip candidate, gated joint
+# fallback 5 deg / 0.02) and the magnitude-weighted (soft) vote: domain x vote-rule comparison under
+# geometric and compound attacks (fourcell_queue.sh). decode_variant only names the output files (detect_gss.jsonl).
+paths:
+  prompts: data/prompts/sdp_1000.jsonl
+  prompts_quality: data/prompts/sdp_5000.jsonl
+  coco_fid: data/coco_fid/val2017
+  results: results
+  survival_map: results/probe/survival_map.npz
+
+backend:
+  model_id: stable-diffusion-v1-5/stable-diffusion-v1-5
+  prefer_fp16: true
+  size: 512
+  latent: 64
+  gen_steps: 50
+  cfg: 7.5
+  inv_steps: 50
+  inv_guidance: 0.0
+
+seeds: [97, 101, 202, 303, 404]
+
+stylering:
+  n_bits: 16
+  bch: {n: 63, k: 16}
+  key: "stylering-demo-key-v1"
+  alloc_strategy: measured
+  chase_flip: 8
+  r_min: 1
+  r_max: 31
+  sectors: 8
+  sector_rotate: 0
+  decode_variant: gss
+
+methods:
+  gaussian_shading:
+    rot_search: 1        # same searches and gates as configs/final256_unified.yaml
+    rot_step: 1.0
+    crop_search: 1
+    scale_min: 0.18
+    scale_max: 1.0
+    scale_step: 0.01
+    max_shift: 32.0
+    sync_z: 6.0
+    crop_z: 8.0
+    flip_search: 1
+    geo_fallback: 1
+    geo_step: 5.0
+    geo_z: 8.0
+    geo_scale_min: 0.55
+    geo_scale_max: 1.0
+    geo_scale_step: 0.02
+    soft_vote: 1         # magnitude-weighted vote (GS-soft)
+    n_bits: 256          # PAPER [2] default: ch=1, hw=8
+    ch: 1
+    hw: 8
+    key: "gs-key-v1"
+
+quality:
+  clip_model: ViT-g-14
+  fid_n: 5000

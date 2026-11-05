@@ -26,6 +26,14 @@ from core.modulation import (CellCalib, combine_positions, count_calib, embed_bi
 from models.base import ExtractResult, WatermarkMethod
 
 
+_RING_MARGIN = [0.26, 0.18, 0.16, 0.14, 0.10, 0.09, 0.08, 0.06, 0.07, 0.05]   # rings 1..10 (results/freq_survival2, regen x2)
+
+
+def _ring_survival_margin(r: int) -> float:
+    """Weight of a ring in the pilot search statistic: measured magnitude-weighted sign survival minus 1/2."""
+    return _RING_MARGIN[r - 1] if r <= len(_RING_MARGIN) else 0.045
+
+
 def _flat_map(cells) -> SurvivalMap:
     n = len(cells)
     return SurvivalMap(cells, np.ones(n), np.ones(n), np.ones(n), {}, {"note": "flat (no probe)"})
@@ -120,9 +128,19 @@ class StyleRing(WatermarkMethod):
         self.geo_fallback = bool(int(sr.get("geo_fallback", 0)))
         self.geo_scales = np.round(np.arange(float(sr.get("geo_scale_min", sr.get("scale_min", 0.55))),
                                              float(sr.get("geo_scale_max", sr.get("scale_max", 1.0))) + 1e-9,
-                                             float(sr.get("scale_step", 0.01))), 4)
+                                             float(sr.get("geo_scale_step", sr.get("scale_step", 0.01)))), 4)
+        # OURS (pilot, compound attacks): (a) keep_topk > 0 keeps the k best candidates of every search even when the
+        #   gate rejects them, reads each candidate and keeps the alignment with the largest final score;
+        #   (b) sync_ring_weight = "survival" weights the cells of the SEARCH statistic by the measured sign-survival
+        #   margin of their ring under regeneration (low rings survive best); the final read is unchanged.
+        self.keep_topk = int(sr.get("keep_topk", 0))
+        self.ring_weight = str(sr.get("sync_ring_weight", ""))
+        self.sync_cell_w = None
+        if self.ring_weight == "survival" and self.alloc is not None:
+            self.sync_cell_w = np.asarray([_ring_survival_margin(c.r) for c in self.alloc], dtype=np.float64)
         self.sync = (ShiftScaleSync(self.alloc, self.chips, self.pos_of, n_code, backend.latent,
-                                    up=int(sr.get("shift_up", 4)), max_shift=float(sr.get("max_shift", 12.0)))
+                                    up=int(sr.get("shift_up", 4)), max_shift=float(sr.get("max_shift", 12.0)),
+                                    cell_weights=self.sync_cell_w)
                      if ((self.crop_search or self.geo_search or self.geo_fallback) and self.alloc is not None)
                      else None)
 
@@ -166,9 +184,35 @@ class StyleRing(WatermarkMethod):
         Y = self.reader.read(Z, hard=self.cell_read_hard)                       # (B, n_cells)
         if self.pos_of is not None:
             W = np.zeros((len(self.alloc), self.n_code))
-            W[np.arange(len(self.alloc)), self.pos_of] = self.sizes
+            W[np.arange(len(self.alloc)), self.pos_of] = self.sizes if self.sync_cell_w is None else self.sizes * self.sync_cell_w
             Y = (Y @ W) / W.sum(0)[None, :]
         return np.abs(Y).mean(1)
+
+    def _score_of(self, z: torch.Tensor) -> float:
+        """Final payload-agnostic score S of a (candidate) latent, as in Eq. (4)."""
+        y = read_cells(z, self.alloc, self.chips, hard=self.cell_read_hard)
+        if self.pos_of is not None:
+            y = combine_positions(y, self.pos_of, self.n_code, self.sizes)
+        return float(np.abs(y[:self._n_bits]).mean())
+
+    def _topk_candidates(self, z0: torch.Tensor, meta: dict | None) -> list[tuple[str, torch.Tensor]]:
+        """Alternative alignments of the input latent z0 from the k best peaks of each search, gate or not."""
+        out = []
+        angles = np.arange(0.0, 360.0, self.rot_step)
+        if self.rot_search:
+            stat = self.sync_stat(rotate_latents(z0, angles))
+            for b in np.argsort(-stat)[:self.keep_topk]:
+                if angles[b] != 0.0:
+                    out.append((f"rot{angles[b]:.0f}", rotate_latents(z0, [angles[b]])))
+        if self.sync is not None and self.crop_search:
+            for s, ty, tx, _ in self.sync.search_topk(z0, self.scales, self.keep_topk):
+                if (s, ty, tx) != (1.0, 0.0, 0.0):
+                    out.append((f"crop{s:.2f},{ty:.2f},{tx:.2f}", ShiftScaleSync.apply(z0, s, ty, tx)))
+        if self.sync is not None and (self.geo_search or self.geo_fallback):
+            for s, th, ty, tx, _ in self.sync.search_joint_topk(z0, self.geo_scales, self.geo_step, self.keep_topk):
+                if (s, th, ty, tx) != (1.0, 0.0, 0.0, 0.0):
+                    out.append((f"joint{s:.2f},{th:.0f},{ty:.1f},{tx:.1f}", ShiftScaleSync.apply_joint(z0, s, th, ty, tx)))
+        return out
 
     def _sync_rotation(self, zT_hat: torch.Tensor) -> tuple[torch.Tensor, dict]:
         angles = np.arange(0.0, 360.0, self.rot_step)
@@ -224,6 +268,7 @@ class StyleRing(WatermarkMethod):
 
     def _extract_one(self, zT_hat: torch.Tensor) -> ExtractResult:
         zT_hat = zT_hat.detach().cpu().float()
+        zT_hat_in = zT_hat
         n_code = self.bch.n if self.variant != "no_ecc" else self._n_bits
         meta = None
         if self.geo_search and self.sync is not None:
@@ -247,6 +292,14 @@ class StyleRing(WatermarkMethod):
                 meta = {**meta, **gmeta, "geo_fallback": True}
                 if not gmeta["geo_gated"]:
                     zT_hat = z_geo
+        if self.keep_topk > 0 and not self.spatial and self.variant in ("argmin", "no_ecc"):
+            z0 = zT_hat_in
+            best_s, best_name = self._score_of(zT_hat), "gated"
+            for name, zc in self._topk_candidates(z0, meta):
+                sc = self._score_of(zc)
+                if sc > best_s:
+                    best_s, best_name, zT_hat = sc, name, zc
+            meta = {**(meta or {}), "topk_pick": best_name, "topk_score": best_s}
         y = (self._read_spatial(zT_hat, n_code) if self.spatial
              else read_cells(zT_hat, self.alloc, self.chips, hard=self.cell_read_hard))
         rep = self.pos_of is not None

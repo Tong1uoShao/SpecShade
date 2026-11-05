@@ -1,0 +1,45 @@
+# Gaussian Shading-256 decoded with a magnitude-weighted (soft) vote over the copies of each bit (2x2 embedding-domain ablation)
+# Gaussian Shading at its official capacity (256 bit: ch=1, hw=8, 64 copies per bit) for the capacity axis
+# of the final table. Everything else identical to configs/default.yaml.
+paths:
+  prompts: data/prompts/sdp_1000.jsonl
+  prompts_quality: data/prompts/sdp_5000.jsonl
+  coco_fid: data/coco_fid/val2017
+  results: results
+  survival_map: results/probe/survival_map.npz
+
+backend:
+  model_id: stable-diffusion-v1-5/stable-diffusion-v1-5
+  prefer_fp16: true
+  size: 512
+  latent: 64
+  gen_steps: 50
+  cfg: 7.5
+  inv_steps: 50
+  inv_guidance: 0.0
+
+seeds: [97, 101, 202, 303, 404]
+
+stylering:
+  n_bits: 16
+  bch: {n: 63, k: 16}
+  key: "stylering-demo-key-v1"
+  alloc_strategy: measured
+  chase_flip: 8
+  r_min: 1
+  r_max: 31
+  sectors: 8
+  sector_rotate: 0
+  decode_variant: soft
+
+methods:
+  gaussian_shading:
+    n_bits: 256          # PAPER [2] default: ch=1, hw=8
+    ch: 1
+    hw: 8
+    key: "gs-key-v1"
+    soft_vote: 1         # OURS ablation: magnitude-weighted vote instead of the hard majority
+
+quality:
+  clip_model: ViT-g-14
+  fid_n: 5000

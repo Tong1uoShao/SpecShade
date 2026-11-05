@@ -66,4 +66,24 @@ capacity_lite:   # OURS: reduced capacity sweep (one attack), 20 images x 1 seed
 crop_sweep: # OURS: how small can a random crop get (area fraction; side = sqrt)
   crop_scale:  {engine: crop_scale,  strengths: [0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]}
 
+combo_matrix:   # OURS: compound-attack matrix, regeneration strength x geometric strength (supplementary; 1 seed x 100 images)
+  cm_regen1_rot15:   {engine: combo, style: "diffusion_regen@1+rotate@15",            strengths: [1]}
+  cm_regen1_rot30:   {engine: combo, style: "diffusion_regen@1+rotate@30",            strengths: [1]}
+  cm_regen1_rot75:   {engine: combo, style: "diffusion_regen@1+rotate@75",            strengths: [1]}
+  cm_regen1_crop90:  {engine: combo, style: "diffusion_regen@1+crop_scale@0.9",       strengths: [1]}
+  cm_regen1_crop75:  {engine: combo, style: "diffusion_regen@1+crop_scale@0.75",      strengths: [1]}
+  cm_regen1_crop50:  {engine: combo, style: "diffusion_regen@1+crop_scale@0.5",       strengths: [1]}
+  cm_img03_rot15:    {engine: combo, style: "style_img2img/anime@0.3+rotate@15",      strengths: [1]}
+  cm_img03_rot30:    {engine: combo, style: "style_img2img/anime@0.3+rotate@30",      strengths: [1]}
+  cm_img03_rot75:    {engine: combo, style: "style_img2img/anime@0.3+rotate@75",      strengths: [1]}
+  cm_img03_crop90:   {engine: combo, style: "style_img2img/anime@0.3+crop_scale@0.9", strengths: [1]}
+  cm_img03_crop75:   {engine: combo, style: "style_img2img/anime@0.3+crop_scale@0.75", strengths: [1]}
+  cm_img03_crop50:   {engine: combo, style: "style_img2img/anime@0.3+crop_scale@0.5", strengths: [1]}
+  cm_img05_rot15:    {engine: combo, style: "style_img2img/anime@0.5+rotate@15",      strengths: [1]}
+  cm_img05_rot30:    {engine: combo, style: "style_img2img/anime@0.5+rotate@30",      strengths: [1]}
+  cm_img05_rot75:    {engine: combo, style: "style_img2img/anime@0.5+rotate@75",      strengths: [1]}
+  cm_img05_crop90:   {engine: combo, style: "style_img2img/anime@0.5+crop_scale@0.9", strengths: [1]}
+  cm_img05_crop75:   {engine: combo, style: "style_img2img/anime@0.5+crop_scale@0.75", strengths: [1]}
+  cm_img05_crop50:   {engine: combo, style: "style_img2img/anime@0.5+crop_scale@0.5", strengths: [1]}
+
 # probe uses the style block only (RQ2 is about stylisation); main experiment uses all blocks.

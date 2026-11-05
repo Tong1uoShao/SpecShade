@@ -395,7 +395,8 @@ class ShiftScaleSync:
     """
 
     def __init__(self, cells: list[Cell], chips: SectorChips | None, pos_of: np.ndarray | None,
-                 n_pos: int, latent: int, up: int = 4, max_shift: float = 12.0) -> None:
+                 n_pos: int, latent: int, up: int = 4, max_shift: float = 12.0,
+                 cell_weights: np.ndarray | None = None) -> None:
         h = w = int(latent)
         n_ch = max(c.c for c in cells) + 1
         C = np.zeros((n_pos, n_ch, h, w), dtype=np.complex64)
@@ -404,6 +405,8 @@ class ShiftScaleSync:
             chip = (np.ones(len(ii), np.float32) if chips is None else
                     ring_chips(h, w, cell.r, chips.n_sectors, chips.seed(cell), chips.rotate))
             val = chip.astype(np.complex64) if cell.part == 0 else (-1j * ring_parity(h, w, cell.r) * chip).astype(np.complex64)
+            if cell_weights is not None:          # OURS (pilot): ring-dependent weight of the cell in the search statistic
+                val = val * np.float32(cell_weights[i])
             # accumulate: the real- and imaginary-part cells of one ring share pixels (and, with the paired
             # allocation, the same position), so their weights add instead of overwriting each other
             C[pos_of[i] if pos_of is not None else i, cell.c, ii, jj] += val
@@ -509,6 +512,35 @@ class ShiftScaleSync:
     @staticmethod
     def apply_joint(z: torch.Tensor, s: float, theta: float, ty: float, tx: float) -> torch.Tensor:
         return shift_latent(rotate_latents(zoom_latents(z, [s]), [theta]), ty, tx)
+
+    # ---- top-k candidates regardless of the gate (# OURS pilot: candidate retention for compound attacks) ----
+    def _topk(self, M: torch.Tensor, up: int, k: int):
+        U = M.shape[-1]
+        idx = torch.arange(U)
+        px = torch.where(idx > U // 2, idx - U, idx).float() / up
+        ok = px.abs() <= self.max_shift
+        win = (ok[:, None] & ok[None, :])[None].expand_as(M)
+        Mm = M.masked_fill(~win, -1.0).reshape(-1)
+        vals, flat = torch.topk(Mm, k)
+        out = []
+        for v, f in zip(vals.tolist(), flat.tolist()):
+            ci, rest = divmod(f, U * U)
+            yi, xi = divmod(rest, U)
+            out.append((ci, float(px[yi]), float(px[xi]), float(v)))
+        return out
+
+    def search_topk(self, z: torch.Tensor, scales, k: int = 3):
+        """The k best (s, ty, tx, stat) of the translation + scale search, gate or not."""
+        scales = np.asarray(scales, dtype=np.float64)
+        M = self.stat_maps(zoom_latents(z, scales))
+        return [(float(scales[ci]), ty, tx, st) for ci, ty, tx, st in self._topk(M, self.up, k)]
+
+    def search_joint_topk(self, z: torch.Tensor, scales, angle_step: float = 3.0, k: int = 3):
+        """The k best (s, theta, ty, tx, stat) of the coarse joint search (no refinement), gate or not."""
+        scales = [float(x) for x in np.asarray(scales, dtype=np.float64)]
+        angles = list(np.arange(0.0, 360.0, angle_step))
+        cands, M = self._maps_for(z, scales, angles, up=2)
+        return [(cands[ci][0], cands[ci][1], ty, tx, st) for ci, ty, tx, st in self._topk(M, 2, k)]
 
 
 def read_cells(zT: torch.Tensor, cells: list[Cell], chips: SectorChips | None = None,
