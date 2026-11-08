@@ -148,42 +148,42 @@ def fig_ablation():
     variants = [(_opt("final_gs256q", "gaussian_shading", "soft"), "spatial, hard"), (_opt("final_gs256s", "gaussian_shading", "soft"), "spatial, soft"),
                 (_opt("final256h", "stylering", "no_ecc"), "Fourier, hard"), (_opt(_first("final256ua", "final256"), "stylering", "no_ecc"), "Fourier, soft")]
     fig = plt.figure(figsize=(PRINT_TWO, 1.85))
-    gs = fig.add_gridspec(1, 4, width_ratios=[1.5, 1.15, 0.85, 1.2], wspace=0.4, left=0.05, right=0.995, bottom=0.2, top=0.88)
+    gs = fig.add_gridspec(1, 4, width_ratios=[2.0, 1.05, 0.95, 1.0], wspace=0.38, left=0.05, right=0.995, bottom=0.2, top=0.88)
     a, b, c = fig.add_subplot(gs[0]), fig.add_subplot(gs[1]), fig.add_subplot(gs[2])
-    w = 0.2
+    w = 0.19
     for i, (df, lab) in enumerate(variants):
         ys = [_pick([df], ks, "tpr_1fpr") for ks, _ in cells]
         shade = ["#c7c7c7", "#8f8f8f", "#8fb3e6", COL["ours"]][i]
         a.bar(np.arange(len(cells)) + (i - 1.5) * w, ys, w, color=shade, label=lab, edgecolor="k", lw=0.3)
-    a.set_xticks(range(len(cells))); a.set_xticklabels([lab for _, lab in cells], fontsize=8); a.set_xlim(-0.6, len(cells) - 0.4)
-    a.set_ylim(0, 1.3); a.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0]); a.set_ylabel("TPR@1%FPR (256 bits)")
+    a.set_xticks(range(len(cells))); a.set_xticklabels([lab for _, lab in cells], fontsize=7.5); a.set_xlim(-0.55, len(cells) - 0.45)
+    a.set_ylim(0, 1.42); a.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0]); a.set_ylabel("TPR@1%FPR")
     a.set_title("(a) embedding domain $\\times$ vote type")
-    a.legend(loc="upper right", frameon=False, ncol=2, fontsize=8, handlelength=1.0, labelspacing=0.3, columnspacing=0.8)
+    a.legend(loc="upper center", bbox_to_anchor=(0.5, 1.02), frameon=False, ncol=2, fontsize=7.5, handlelength=1.0, labelspacing=0.25, columnspacing=0.7)
     rings = np.arange(1, 45)
     for k, lab, col in (("regen_sd:2.0", "regen. $\\times$2", COL["ours"]), ("img2img_anime:0.5", "img2img 0.5", COL["accent"])):
         b.plot(rings, S[k]["hard"], color=col, lw=1.0, label=lab)
         b.plot(rings, S[k]["weighted"], color=col, lw=1.0, ls="--")
     sp = S["regen_sd:2.0"]["spatial_hard"]
-    b.axhline(sp, color="k", lw=0.6, ls=":")
-    b.text(2, sp - 0.012, "spatial, hard", ha="left", va="top", fontsize=8)
-    b.set_xlabel("ring $r$"); b.set_ylabel("sign survival"); b.set_ylim(0.48, 0.8); b.set_xlim(1, 44)
-    b.set_title("(b) survival per ring"); b.legend(frameon=False, fontsize=8, handlelength=1.4, loc="upper right", labelspacing=0.3)
+    b.axhline(sp, color="k", lw=0.6, ls=":", label="spatial, hard")
+    b.set_xlabel("ring $r$"); b.set_ylabel("sign survival"); b.set_ylim(0.48, 0.83); b.set_xlim(1, 44)
+    b.set_title("(b) survival per ring"); b.legend(frameon=False, fontsize=7.5, handlelength=1.0, handletextpad=0.4, loc="upper right", labelspacing=0.2, borderaxespad=0.15)
     b.grid(alpha=0.25, lw=0.5)
-    ks = [("main", "1"), ("abl_sec4", "4"), ("abl_sec8", "8"), ("abl_sec16", "16"), ("abl_sec32", "32"), ("abl_sec0", "pair")]
+    ks = [("main", "1"), ("abl_sec4", "4"), ("abl_sec8", "8"), ("abl_sec16", "16"), ("abl_sec32", "32"), ("abl_sec0", "per\npair")]
     tpr = [fam(table(e, "stylering"), "img2img", "0.5", "tpr_1fpr") for e, _ in ks]
     c.plot(range(len(ks)), tpr, marker="o", ms=3.5, color=COL["ours"])
-    for i, t in enumerate(tpr):
-        c.text(i, t + 0.02, f"{t:.2f}", ha="center", fontsize=8)
-    c.set_xticks(range(len(ks))); c.set_xticklabels([k for _, k in ks])
-    c.set_xlabel("sectors per ring $n_s$"); c.set_ylabel("TPR@1%FPR, img2img 0.5")
-    c.set_ylim(0, 0.7); c.set_title("(c) coherent chips: robust")
+    for i, t in enumerate(tpr):                       # label the first, the n_s = 8 and the last point only (the rest is in the text)
+        if i in (0, 2, len(tpr) - 1):
+            c.text(i + (0.15 if i == 0 else 0), t + 0.025, f"{t:.2f}", ha="center", va="bottom", fontsize=7.5)
+    c.set_xticks(range(len(ks))); c.set_xticklabels([k for _, k in ks], fontsize=7.5)
+    c.set_xlabel("sectors per ring $n_s$"); c.set_ylabel("TPR, img2img 0.5")
+    c.set_ylim(0, 0.72); c.set_title("(c) coherent chips: robust")
     c.grid(alpha=0.25, lw=0.5)
     # (d) ... but visible: top-left quarters of the same prompts generated with each design (16-bit ablation)
     from PIL import Image
     designs = [("main", "$n_s{=}1$"), ("abl_sec8", "$n_s{=}8$"), ("abl_sec0", "per pair")]
     pids = ["p0000", "p0003"]                              # two prompts with flat backgrounds
     t = fig.add_subplot(gs[3]); t.axis("off")
-    t.set_title("(d) coherent chips: visible", pad=11)
+    t.set_title("(d) coherent chips: visible", pad=15)
     sub = gs[3].subgridspec(len(pids), len(designs), wspace=0.04, hspace=0.04)
     for r, pid in enumerate(pids):
         for c, (exp, lab) in enumerate(designs):
@@ -194,7 +194,7 @@ def fig_ablation():
             for sp in ax.spines.values():
                 sp.set_linewidth(0.4)
             if r == 0:
-                ax.set_title(lab, fontsize=8.5, pad=2)
+                ax.set_title(lab, fontsize=7.5, pad=1.5)
     fig.savefig(OUT / "ablation.pdf"); plt.close(fig)
 
 
@@ -289,12 +289,13 @@ def fig_geo():
         return float("nan")
     for col, ls, lab in (("tpr_1fpr", "-", "TPR"), ("bit_acc_all", "--", "Acc")):
         ys = [rot(geo if ang in ints else geof, ang, col) for ang in allang]
-        a.plot(allang, ys, ls=ls, color=COL["ours"], lw=1.0, label=f"SpecShade-256 {lab}")
+        a.plot(allang, ys, ls=ls, color=COL["ours"], lw=1.0, label="SpecShade-256" if col == "tpr_1fpr" else None)
         a.plot(ints, [rot(geo, g, col) for g in ints], "o", ms=3.5, color=COL["ours"])
         a.plot(halves, [rot(geof, g, col) for g in halves], "o", ms=3.5, mfc="white", color=COL["ours"])
-        a.plot(ints, [rot(gsg, g, col) for g in ints], ls=ls, marker="s", ms=3, color=COL["gs"], lw=1.0, label=f"GS-256 {lab}")
+        a.plot(ints, [rot(gsg, g, col) for g in ints], ls=ls, marker="s", ms=3, color=COL["gs"], lw=1.0, label="GS-256" if col == "tpr_1fpr" else None)
     a.set_xlabel("rotation angle (deg)"); a.set_ylim(-0.03, 1.03); a.set_xticks([0, 15, 30, 45, 60, 75, 90])
-    a.set_title("(a) rotation"); a.grid(alpha=0.25, lw=0.5); a.legend(loc="center right", frameon=False, fontsize=8)
+    a.set_title("(a) rotation"); a.grid(alpha=0.25, lw=0.5)
+    a.legend(loc="lower center", bbox_to_anchor=(0.5, 0.08), frameon=False, ncol=2, fontsize=7.5, handlelength=1.4, columnspacing=1.0)
     big, small = [0.9, 0.75, 0.5], [0.4, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]
     def crop(df, x, col):
         k = f"crop_scale@{x}"
@@ -309,11 +310,11 @@ def fig_geo():
         ax.plot(big, [crop(gsg, x, col) for x in big], marker="s", ms=3, color=COL["gs"], lw=1.0, label="GS-256")
         if gss_geo is not None and gss_crop is not None:
             ax.plot(big + small, [crop(gss_geo, x, col) for x in big] + [crop(gss_crop, x, col) for x in small], ls=":", marker="s", ms=3,
-                    mfc="white", color=COL["gs"], lw=1.0, label="GS-256 + same sync.")
+                    mfc="white", color=COL["gs"], lw=1.0, label="GS-256 + sync.")
         ax.set_xlabel("retained area fraction $a$"); ax.set_ylabel(yl); ax.invert_xaxis(); ax.grid(alpha=0.25, lw=0.5)
     b.set_ylim(-0.03, 1.03); c.set_ylim(0.45, 1.01)
     b.set_title("(b) crop: detection"); c.set_title("(c) crop: decoding")
-    b.legend(loc="center left", frameon=False, fontsize=8)
+    b.legend(loc="center left", bbox_to_anchor=(-0.02, 0.47), frameon=False, fontsize=7.5, handlelength=1.1, handletextpad=0.4, labelspacing=0.25)
     fig.tight_layout(w_pad=0.8)
     fig.savefig(OUT / "geo.pdf"); plt.close(fig)
 
