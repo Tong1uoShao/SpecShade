@@ -74,9 +74,9 @@ SURVIVAL = {  # cell -> per-element sign survival p (measured on GS images, anim
 
 def fig_law():
     gs16, gs256 = table("final", "gaussian_shading"), table("final_gs256", "gaussian_shading")
-    fig, (a, b) = plt.subplots(1, 2, figsize=(PRINT_ONE, 1.6), gridspec_kw={"width_ratios": [1, 1.15]})
+    fig, (a, b) = plt.subplots(1, 2, figsize=(PRINT_ONE, 1.5), gridspec_kw={"width_ratios": [1, 1.1], "wspace": 0.55})
     errs = []
-    for df, n, mk, lab in ((gs16, 1024, "o", "GS-16 ($n{=}1024$)"), (gs256, 64, "s", "GS-256 ($n{=}64$)")):
+    for df, n, mk, lab in ((gs16, 1024, "o", "GS-16"), (gs256, 64, "s", "GS-256")):
         xs, ys = [], []
         for cell, p in SURVIVAL.items():
             if cell in df.index:
@@ -86,20 +86,20 @@ def fig_law():
         a.scatter(xs, ys, marker=mk, s=16, label=lab, color=COL["gs"] if n == 64 else COL["ours"], zorder=3)
     a.plot([0.5, 1], [0.5, 1], ls="--", lw=0.8, color="k")
     a.set_xlim(0.5, 1.0); a.set_ylim(0.5, 1.0)
-    a.set_xlabel(r"predicted $\Phi((2p-1)\sqrt{n})$"); a.set_ylabel("measured bit acc.")
-    a.set_title("(a) law vs. measurement")
+    a.set_xlabel(r"predicted $\Phi((2p-1)\sqrt{n})$"); a.set_ylabel("measured bit acc."); a.set_xticks([0.5, 0.75, 1.0]); a.set_yticks([0.5, 0.75, 1.0])
+    a.set_title("(a) law vs. measured")
     print(f"law: max |predicted - measured| = {max(errs):.3f}")
-    a.legend(loc="lower right", frameon=False, handletextpad=0.3, borderaxespad=0.2)
+    a.legend(loc="lower right", frameon=False, fontsize=7.5, handletextpad=0.3, borderaxespad=0.2, labelspacing=0.2)
     n = np.logspace(0, 4.3, 200)
     for p, ls in ((0.549, "-"), (0.527, "--"), (0.511, ":")):
         b.plot(n, [phi((2 * p - 1) * sqrt(v)) for v in n], ls=ls, color="k", label=f"$p={p}$")
-    for v, txt in ((64, "256 bit\n(64 votes)"), (1024, "16 bit\n(1024 votes)")):
+    for v, txt, ha in ((64, "256 bit", "right"), (1024, "16 bit", "left")):      # n = 64 and 1024 votes per bit
         b.axvline(v, color=COL["bad"] if v == 64 else COL["accent"], lw=0.8)
-        b.text(v * 1.08, 0.52, txt, fontsize=8.5, color=COL["bad"] if v == 64 else COL["accent"])
-    b.set_xscale("log"); b.set_ylim(0.5, 1.0); b.set_xlabel("votes per bit $n$"); b.set_ylabel("predicted bit acc.")
-    b.set_title("(b) accuracy vs. votes")
-    b.legend(loc="upper left", frameon=False, handlelength=1.4, borderaxespad=0.2)
-    fig.tight_layout(w_pad=0.6)
+        b.text(v * (0.8 if ha == "right" else 1.25), 0.515, txt, fontsize=7.5, ha=ha, va="bottom", color=COL["bad"] if v == 64 else COL["accent"])
+    b.set_xscale("log"); b.set_ylim(0.5, 1.0); b.set_xlabel("votes per bit $n$"); b.set_ylabel("predicted bit acc."); b.set_yticks([0.5, 0.75, 1.0]); b.set_xticks([1, 100, 10000])
+    b.set_title("(b) law vs. votes")
+    # line styles (p = 0.549 solid, 0.527 dashed, 0.511 dotted) are explained in the caption: no room for a legend in one column
+    fig.tight_layout(w_pad=0.4)
     fig.savefig(OUT / "law.pdf"); plt.close(fig)
     print("law: max |pred-meas| =", round(max(errs), 4))
 

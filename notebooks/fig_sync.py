@@ -56,22 +56,23 @@ print({"direct": direct, "synced": synced, "theta_peak": float(angles[int(np.arg
 
 # %%
 fig = plt.figure(figsize=(2.94, 2.85))
-gs = fig.add_gridspec(2, 6, height_ratios=[1, 1.05], hspace=0.62, wspace=1.6)
+gs = fig.add_gridspec(2, 6, height_ratios=[1, 1.05], hspace=0.7, wspace=1.8)
 for i, (k, im) in enumerate(ims.items()):
     ax = fig.add_subplot(gs[0, 2 * i:2 * i + 2]); ax.imshow(im); ax.set_xticks([]); ax.set_yticks([])
     ax.set_title(k, fontsize=8)
-    ax.set_xlabel(f"direct $S$={direct[k]:.2f}\nsynced $S$={synced[k]:.2f}", fontsize=8.5)
+    ax.set_xlabel(f"direct {direct[k]:.2f}\nsynced {synced[k]:.2f}", fontsize=7.5)
 ax = fig.add_subplot(gs[1, 0:3])
 ax.plot(angles, s_theta, lw=0.7, color="#1f5fbf")
 ax.set_xlim(0, 360); ax.set_xticks([0, 120, 240, 360]); ax.set_xlabel(r"angle $\theta$ (deg)", fontsize=8)
-ax.set_ylabel(r"$S(\theta)$", fontsize=8); ax.set_title("(b) rotation search", fontsize=8.5)
+ax.set_ylabel(r"$S(\theta)$", fontsize=8); ax.set_title("(b) rotation", fontsize=8.5)
 k = int(np.argmax(s_theta))
 ax.annotate(f"{angles[k]:.0f}$^\\circ$", (angles[k], s_theta[k]), xytext=(150, s_theta[k] * 0.97), fontsize=7.5,
             arrowprops=dict(arrowstyle="-", lw=0.5))
 ax = fig.add_subplot(gs[1, 3:6])
 ax.imshow(M, cmap="magma", extent=[-32, 32, 32, -32]); ax.set_xticks([-32, 0, 32]); ax.set_yticks([-32, 0, 32])
 ax.set_xlabel("$t_x$ (latent px)", fontsize=8); ax.set_ylabel("$t_y$", fontsize=8)
-ax.set_title(f"(c) shift map at $\\gamma^\\star$={s_star:.2f}", fontsize=8.5)
+ax.set_title("(c) shift map", fontsize=8.5)
+print("gamma* =", round(float(s_star), 3))
 fig.text(0.0, 0.985, "(a)", fontsize=8.5)
 OUT.mkdir(parents=True, exist_ok=True)
 fig.savefig(OUT / "sync.pdf"); fig.savefig(OUT / "sync.png", dpi=170)
