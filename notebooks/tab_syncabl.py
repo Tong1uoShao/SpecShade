@@ -63,7 +63,7 @@ body = r"""\begin{table}[t]
 \caption{Ablation of the self-synchronization: TPR@1\%FPR of the 256-bit detector with one component removed, on 50 prompts $\times$ 2 attack seeds.}
 \label{tab:syncabl}
 \scriptsize
-\setlength{\tabcolsep}{2pt}
+\setlength{\tabcolsep}{1.5pt}
 \begin{tabular}{lccccc}
 \toprule
 """ + hdr + r"""

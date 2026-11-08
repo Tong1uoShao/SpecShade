@@ -49,7 +49,7 @@ for pid in PIDS:
 \begin{tabular}{*{7}{c}}
 """ + "\n".join(rows) + r"""
 \end{tabular}
-\caption{Images generated from the same prompts (rows) and seeds by all methods (columns). Semantic watermarks change the initial noise, so their images differ in content but not in quality from unwatermarked ones (Table~\ref{tab:quality}).}
+\caption{Images generated from the same prompts (rows) and seeds by all methods (columns). Semantic watermarks change the initial noise, so their images differ in content but not in quality from unwatermarked ones (Sec.~IV-E of the paper).}
 \label{fig:gallery}
 \end{figure*}
 """)
