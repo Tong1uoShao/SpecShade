@@ -180,7 +180,7 @@ def fig_ablation():
     c.grid(alpha=0.25, lw=0.5)
     # (d) ... but visible: top-left quarters of the same prompts generated with each design (16-bit ablation)
     from PIL import Image
-    designs = [("main", "$n_s{=}1$"), ("abl_sec8", "$n_s{=}8$"), ("abl_sec0", "per pair")]
+    designs = [("main", "$n_s{=}1$"), ("abl_sec8", "$n_s{=}8$"), ("abl_sec0", "pair")]
     pids = ["p0000", "p0003"]                              # two prompts with flat backgrounds
     t = fig.add_subplot(gs[3]); t.axis("off")
     t.set_title("(d) coherent chips: visible", pad=15)
