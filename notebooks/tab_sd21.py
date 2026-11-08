@@ -70,7 +70,7 @@ ia = ID.get("avg", {})
 rows.append("\\midrule\nAverage & " + " & ".join(f"{ia[m][key]:.2f}" if m in ia else "--" for key in ("ident6", "e2e6") for m in ("ours", "gs")) + " & " + " & ".join("--" if m[k][0] != m[k][0] else f"{m[k][0]:.2f}" for k in ("ours21", "gs21")) + "\\\\")
 body = r"""\begin{table}[t]
 \centering
-\caption{Identification among $10^{6}$ enrolled users with random 256-bit identifiers on SD1.5 (Top-1 accuracy over all attacked images, and detected at 1\%~FPR with the true user ranked first), and TPR@1\%FPR on Stable Diffusion 2.1-base (thresholds from $1{,}000$ unwatermarked SD2.1 images). Best in bold.}
+\caption{Identification among $10^{6}$ enrolled users with random 256-bit identifiers on SD1.5 (Top-1 accuracy over all attacked images, an analytic estimate from the Hamming distance verified by Monte Carlo in Sec.~\ref{sec:exp-capacity}, and detected at 1\%~FPR with the true user ranked first), and TPR@1\%FPR on Stable Diffusion 2.1-base (thresholds from $1{,}000$ unwatermarked SD2.1 images). Best in bold.}
 \label{tab:extra}
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{lcccccc}
