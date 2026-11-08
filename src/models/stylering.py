@@ -261,12 +261,24 @@ class StyleRing(WatermarkMethod):
         if not self.flip_search:
             return self._extract_one(zT_hat)
         z = zT_hat.detach().cpu().float()
-        r0, r1 = self._extract_one(z), self._extract_one(torch.flip(z, dims=[3]))
+        zf = torch.flip(z, dims=[3])
+        # OURS: the joint fallback is run only when NEITHER candidate was aligned by the sequential searches (both gated
+        #   on both candidates); on a watermarked image aligned as-is it was wasted on the mirrored candidate (~4 s).
+        r0, r1 = self._extract_one(z, allow_fallback=False), self._extract_one(zf, allow_fallback=False)
+        if self.geo_fallback and self.sync is not None and self.crop_search and not self.geo_search \
+                and not (self._aligned(r0.meta) or self._aligned(r1.meta)):
+            r0, r1 = self._extract_one(z, allow_fallback=True), self._extract_one(zf, allow_fallback=True)
         best, flipped = (r1, True) if r1.score > r0.score else (r0, False)
         best.meta = {**(best.meta or {}), "flipped": flipped, "score_asis": float(r0.score), "score_flipped": float(r1.score)}
         return best
 
-    def _extract_one(self, zT_hat: torch.Tensor) -> ExtractResult:
+    @staticmethod
+    def _aligned(meta: dict | None) -> bool:
+        """A sequential search accepted a peak (rotation not gated, or shift/scale not gated)."""
+        m = meta or {}
+        return (not m.get("gated", True)) or (not m.get("crop_gated", True))
+
+    def _extract_one(self, zT_hat: torch.Tensor, allow_fallback: bool = True) -> ExtractResult:
         zT_hat = zT_hat.detach().cpu().float()
         zT_hat_in = zT_hat
         n_code = self.bch.n if self.variant != "no_ecc" else self._n_bits
@@ -287,7 +299,7 @@ class StyleRing(WatermarkMethod):
             meta = {**(meta or {}), "scale": s, "ty": ty, "tx": tx, "crop_stat": st, "crop_stat0": st0,
                     "crop_z": float(z), "crop_gated": bool(gated)}
             rot_gated = bool((meta or {}).get("gated", True))
-            if self.geo_fallback and gated and rot_gated:
+            if self.geo_fallback and gated and rot_gated and allow_fallback:
                 z_geo, gmeta = self._sync_joint(z_in)
                 meta = {**meta, **gmeta, "geo_fallback": True}
                 if not gmeta["geo_gated"]:

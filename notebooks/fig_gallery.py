@@ -3,7 +3,7 @@
 # Writes JPEG tiles to $FIG_OUT/gallery/ and two LaTeX figure* snippets to $TAB_OUT/{fig_gallery,fig_attacks}.tex
 # (labels and TPRs are LaTeX text, so the tiles stay small and the fonts match the paper).
 # Usage: FIG_OUT=$FIG_OUT TAB_OUT=$TAB_OUT \
-#        GALLERY_PIDS=p0015,p0026,p0039,p0045 ATTACK_PID=p0014 python notebooks/fig_gallery.py
+#        GALLERY_PIDS=p0015,p0026 ATTACK_PID=p0014 python notebooks/fig_gallery.py
 
 # %%
 import os
@@ -18,7 +18,7 @@ FIG = Path(os.environ.get("FIG_OUT", ROOT.parent / "docs" / "manuscripts" / "fig
 TAB = Path(os.environ.get("TAB_OUT", ROOT.parent / "docs" / "manuscripts" / "tables"))
 TILES = FIG / "gallery"
 TILES.mkdir(parents=True, exist_ok=True)
-PIDS = os.environ.get("GALLERY_PIDS", "p0015,p0026,p0039,p0045").split(",")
+PIDS = os.environ.get("GALLERY_PIDS", "p0015,p0026").split(",")
 APID = os.environ.get("ATTACK_PID", "p0014")
 SEED = 97
 PX = 320
@@ -37,7 +37,7 @@ def tile(src: Path, name: str) -> str:
 METHODS = [("No watermark", "final/none"), ("Stable Sig.", "final/stable_signature"), ("VINE-R", "final/vine"),
            ("RingID", "final/ringid"), ("GS-256", "final_gs256/gaussian_shading"),
            ("GaussMarker-256", "gm256/gaussmarker_full"), ("\\textbf{\\method-256}", "final_fr256/stylering")]
-w = 0.136
+w = 0.096      # tile width (fraction of \textwidth); the paper's two-row gallery
 rows = [" & ".join(lab for lab, _ in METHODS) + " \\\\"]
 for pid in PIDS:
     cells = [f"\\includegraphics[width={w}\\textwidth]{{{tile(RES / d / 'gen' / f'{pid}.png', f'gen_{pid}_{k}')}}}"
@@ -104,7 +104,7 @@ GRID = [
      ("mirror", 1, "Vertical flip"), ("combo_crop_rotate", 1, "Crop + rotation"),
      ("combo_style_mirror", 1, "IP2P + mirror"), ("combo_style_crop", 1, "img2img + crop"), ("combo_regen_rotate", 1, "Regen.\\ + rotation")],
 ]
-w = 0.119
+w = 0.092      # tile width of the attack examples (four rows)
 rows, missing = [], []
 for r, line in enumerate(GRID):
     ims, labs, nums = [], [], []

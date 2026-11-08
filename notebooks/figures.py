@@ -272,8 +272,11 @@ def fig_gm():
 
 # %%
 def fig_geo():
-    geo, geof, gsg = table("geo256", "stylering"), table("geo256f", "stylering"), table("geo_gs256", "gaussian_shading")
-    sw256, sw16 = table("fr256_cropmin", "stylering"), table("fr2_cropmin2", "stylering")
+    geo, geof, gsg = table(_first("geo256u", "geo256"), "stylering"), table("geo256f", "stylering"), table("geo_gs256", "gaussian_shading")
+    sw256, sw16 = table(_first("ours_crop", "fr256_cropmin"), "stylering"), table("fr2_cropmin2", "stylering")
+    # GS-256 decoded with the SAME synchronisation and the soft vote (fourcell_queue.sh / cropsweep_queue.sh): the embedding
+    # domain under one detector; shown on the crop panels, where the two domains part below a = 0.5.
+    gss_geo, gss_crop = _opt("gsync_geo", "gaussian_shading", "gss"), _opt("gsync_crop", "gaussian_shading", "gss")
     fig, (a, b, c) = plt.subplots(1, 3, figsize=(TWO_COL, 1.75))
     ints, halves = [15, 30, 45, 75, 90], [7.5, 22.5, 37.5, 67.5]
     allang = sorted(ints + halves)
@@ -302,6 +305,9 @@ def fig_geo():
         xs16 = [0.5] + small
         ax.plot(xs16, [crop(sw16, x, col) for x in xs16], marker="^", ms=3.5, mfc="white", color=COL["accent"], lw=1.0, label="SpecShade-16")
         ax.plot(big, [crop(gsg, x, col) for x in big], marker="s", ms=3, color=COL["gs"], lw=1.0, label="GS-256")
+        if gss_geo is not None and gss_crop is not None:
+            ax.plot(big + small, [crop(gss_geo, x, col) for x in big] + [crop(gss_crop, x, col) for x in small], ls=":", marker="s", ms=3,
+                    mfc="white", color=COL["gs"], lw=1.0, label="GS-256 + same sync.")
         ax.set_xlabel("retained area fraction $a$"); ax.set_ylabel(yl); ax.invert_xaxis(); ax.grid(alpha=0.25, lw=0.5)
     b.set_ylim(-0.03, 1.03); c.set_ylim(0.45, 1.01)
     b.set_title("(b) crop: detection"); c.set_title("(c) crop: decoding")

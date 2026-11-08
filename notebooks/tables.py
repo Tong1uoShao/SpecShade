@@ -18,9 +18,9 @@ OUT.mkdir(parents=True, exist_ok=True)
 NOTES: list[str] = []
 
 
-def table(exp: str, method: str, fallback: str | None = None) -> pd.DataFrame | None:
+def table(exp: str, method: str, fallback: str | None = None, variant: str | None = None) -> pd.DataFrame | None:
     for e in ([exp] + ([fallback] if fallback else [])):
-        for name in ("main_no_ecc.csv", "main_soft.csv"):
+        for name in ((f"main_{variant}.csv",) if variant else ("main_no_ecc.csv", "main_soft.csv")):
             p = RES / e / "tables" / name
             if p.exists():
                 df = pd.read_csv(p)
@@ -252,10 +252,11 @@ def table_gm_both():
 \centering
 \caption{Both detection scores of GaussMarker-256 on the 15 key cells (TPR@1\%FPR / bit accuracy): the bit agreement with the known message after the restorer (used in the paper) and the fixed fusion of this agreement with the ring distance. Each score is calibrated on the same $1{,}000$ unwatermarked images.}
 \label{tab:gm-both}
-\setlength{\tabcolsep}{4pt}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
 \begin{tabular}{lcccc}
 \toprule
- & \multicolumn{2}{c}{Bit agreement} & \multicolumn{2}{c}{Agreement $-$ ring distance}\\
+ & \multicolumn{2}{c}{Bit agreement} & \multicolumn{2}{c}{Agreement $-$ ring dist.}\\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 Attack & TPR & Acc & TPR & Acc\\
 \midrule
@@ -269,7 +270,13 @@ Attack & TPR & Acc & TPR & Acc\\
 
 def table_geo():
     ours = [table("geo256u", "stylering", fallback="geo256"), table("combo256u", "stylering", fallback="combo256")]
-    gso = [table("geo_gs256", "gaussian_shading"), table("combo_gs256", "gaussian_shading")]
+    gss = [table("gsync_geo", "gaussian_shading", variant="gss"), table("gsync_combo", "gaussian_shading", variant="gss")]
+    GS_SYNC = os.environ.get("GEO_GS_SYNC") == "1" and all(d is not None for d in gss)   # paper: original decoder; GEO_GS_SYNC=1 -> GS-soft + sync.
+    gso = gss if GS_SYNC else [table("geo_gs256", "gaussian_shading"), table("combo_gs256", "gaussian_shading")]
+    gs_head = r"GS-256 + sync." if GS_SYNC else "GS-256"
+    gs_note = (r"GS-256 is decoded with the same synchronization as \method\ and the magnitude-weighted vote (GS-soft + sync.); its original decoder reaches a TPR of at most $0.02$ on these attacks."
+               if GS_SYNC else "GS-256 uses its original decoder.")
+    NOTES.append("geometric table GS columns: " + ("GS-soft + synchronisation (gsync_*)" if GS_SYNC else "original decoder (geo_gs256/combo_gs256)"))
     gm, _ = gm_table()
 
     def pick(dfs, cells, col):
@@ -288,12 +295,12 @@ def table_geo():
         lines.append(f"{lab} & " + " & ".join(f"{t[i]} & {a[i]}" for i in range(3)) + "\\\\")
     body = r"""\begin{table*}[t]
 \centering
-\caption{Geometric and compound attacks (TPR@1\%FPR / bit accuracy, 256 bits). GS-256 uses its original decoder. GaussMarker-256 was evaluated on the key cells only (Table~\ref{tab:gm}). """ + MARK_NOTE + r"""}
+\caption{Geometric and compound attacks (TPR@1\%FPR / bit accuracy, 256 bits). """ + gs_note + r""" GaussMarker-256 was evaluated on the key cells only (Table~\ref{tab:gm}). """ + MARK_NOTE + r"""}
 \label{tab:geo}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccccc}
 \toprule
- & \multicolumn{2}{c}{\method-256} & \multicolumn{2}{c}{GS-256} & \multicolumn{2}{c}{GaussMarker-256}\\
+ & \multicolumn{2}{c}{\method-256} & \multicolumn{2}{c}{""" + gs_head + r"""} & \multicolumn{2}{c}{GaussMarker-256}\\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 Attack & TPR & Acc & TPR & Acc & TPR & Acc\\
 \midrule

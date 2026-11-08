@@ -62,7 +62,7 @@ body = r"""\begin{table}[t]
 \centering
 \caption{Ablation of the self-synchronization: TPR@1\%FPR of the 256-bit detector with one component removed, on 50 prompts $\times$ 2 attack seeds.}
 \label{tab:syncabl}
-\footnotesize
+\scriptsize
 \setlength{\tabcolsep}{2pt}
 \begin{tabular}{lccccc}
 \toprule

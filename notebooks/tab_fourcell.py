@@ -81,13 +81,17 @@ for lab, key in CELLS:
     rows.append(f"{lab} & " + " & ".join(cells) + "\\\\")
 rows.append("\\midrule\nAverage & " + " & ".join((f"{np.mean(m['t']):.2f} & {np.mean(m['a']):.3f}" if m["t"] else "-- & --") for m in means.values()) + "\\\\")
 times = {k: det_time(*DET[k][1][0]) for k in DET}
-rows.append("Detection time (s), attacked / unwatermarked & " + " & ".join(
+VF = RES / "verify_fallback.json"          # SpecShade timed with the final fallback rule (joint search only when neither flip candidate is aligned)
+if VF.exists():
+    vf = json.load(open(VF)); times["ours"] = times["ourh"] = (vf["geo256u"]["t_new_s"], vf["null"]["t_new_s"])
+rows.append("Detection time (s), attacked / unwm. & " + " & ".join(
     (f"\\multicolumn{{2}}{{c}}{{{t:.1f} / {tn:.1f}}}" if t == t else "\\multicolumn{2}{c}{--}") for t, tn in times.values()) + "\\\\")
 body = r"""\begin{table*}[t]
 \centering
-\caption{Embedding domain $\times$ vote rule under geometric and compound attacks with the same synchronisation (rotation search, zoom and shift search, flip candidate, gated joint fallback; 256 bits; TPR@1\%FPR / bit accuracy, 100 prompts $\times$ 2 attack seeds, thresholds from 1,000 unwatermarked images processed by each detector). Detection time excludes the DDIM inversion. Best TPR in bold.}
+\caption{Embedding domain $\times$ vote rule under geometric and compound attacks with the same synchronisation (rotation search, zoom and shift search, flip candidate, gated joint fallback; 256 bits; TPR@1\%FPR / bit accuracy, 100 prompts $\times$ 2 attack seeds, thresholds from 1,000 unwatermarked images processed by each detector). Detection time excludes the DDIM inversion (for \\method\\ with the joint search run only when neither flip candidate is aligned). Best TPR in bold.}
 \label{tab:fourcell}
-\setlength{\tabcolsep}{3.5pt}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
 \begin{tabular}{lcccccccc}
 \toprule
  & \multicolumn{2}{c}{""" + DET["gsh"][0] + r"""} & \multicolumn{2}{c}{""" + DET["gss"][0] + r"""} & \multicolumn{2}{c}{""" + DET["ourh"][0] + r"""} & \multicolumn{2}{c}{""" + DET["ours"][0] + r"""}\\
