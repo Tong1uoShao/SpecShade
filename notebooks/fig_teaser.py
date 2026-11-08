@@ -25,7 +25,7 @@ FONTS = Path(os.environ.get("FONT_DIR", "fonts"))
 PID = os.environ.get("PID", "p0014")
 for f in FONTS.glob("ComicNeue-*.ttf"):
     font_manager.fontManager.addfont(str(f))
-plt.rcParams.update({"font.family": "Comic Neue", "mathtext.fontset": "stix", "font.size": 7.5, "pdf.fonttype": 42})
+plt.rcParams.update({"font.family": "Comic Neue", "mathtext.fontset": "stix", "font.size": 8.6, "pdf.fonttype": 42})
 INK = "#222222"
 
 
@@ -51,7 +51,7 @@ for name, exp, m, det, null in (("Gaussian Shading-256", "combo_gs256", "gaussia
     rows.append(dict(name=name, src=RES / gen_dir / "gen" / f"{PID}.png", atk=base / "atk" / atk,
                      score=float(r["score"]), acc=float(r["bit_acc"]), tau=tau(base / null)))
 
-W, H = 3.5, 2.42                                   # inches = data units
+W, H = 3.5, 2.42                                   # inches = data units; printed at 0.87\linewidth, fonts x1.15 so that they print at >= 7.5 pt
 fig = plt.figure(figsize=(W, H))
 ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, W); ax.set_ylim(0, H); ax.axis("off")
 S = 0.93
@@ -60,7 +60,7 @@ BX = 2.86                                          # result column
 RY = [1.75, 0.60]                                  # row centres
 
 
-def text(x, y, s, size=7.5, color=INK, style="italic", **kw):
+def text(x, y, s, size=8.6, color=INK, style="italic", **kw):
     return ax.text(x, y, s, fontsize=size, color=color, ha="center", va="center", fontstyle=style, zorder=8, **kw)
 
 
@@ -77,12 +77,12 @@ renderer = fig.canvas.get_renderer()
 for r, cy in zip(rows, RY):
     ok = r["score"] >= r["tau"]
     col, fc = ("#2E8B57", "#E8F5EC") if ok else ("#C0392B", "#FBE8E6")
-    ax.text(0.13, cy, r["name"].replace(" (ours)", "\n(ours)"), rotation=90, fontsize=7.5, fontweight="bold",
+    ax.text(0.13, cy, r["name"].replace(" (ours)", "\n(ours)"), rotation=90, fontsize=8.6, fontweight="bold",
             fontstyle="italic", ha="center", va="center", color=INK, linespacing=1.1)
     img(r["src"], CX[0], cy, S)
     img(r["atk"], CX[1], cy, S)
-    t = [text(BX, cy + 0.17, "detected" if ok else "not detected", size=8.5, color=col, fontweight="bold"),
-         text(BX, cy, rf"$S={r['score']:.2f}\,{'\\geq' if ok else '<'}\,\tau={r['tau']:.2f}$", size=8),
+    t = [text(BX, cy + 0.17, "detected" if ok else "not detected", size=9.8, color=col, fontweight="bold"),
+         text(BX, cy, rf"$S={r['score']:.2f}\,{'\\geq' if ok else '<'}\,\tau={r['tau']:.2f}$", size=9.2),
          text(BX, cy - 0.16, f"bit accuracy {r['acc']:.2f}")]
     bb = [x.get_window_extent(renderer).transformed(ax.transData.inverted()) for x in t]
     x0, x1 = min(b.x0 for b in bb) - 0.07, max(b.x1 for b in bb) + 0.07

@@ -22,11 +22,12 @@ RES = ROOT / "results"
 OUT = Path(os.environ.get("FIG_OUT", ROOT.parent / "docs" / "manuscripts" / "figs"))
 OUT.mkdir(parents=True, exist_ok=True)
 
-plt.rcParams.update({"font.family": "serif", "font.size": 8, "axes.labelsize": 8, "axes.titlesize": 8.5,
-                     "legend.fontsize": 7, "xtick.labelsize": 7, "ytick.labelsize": 7, "axes.linewidth": 0.6,
-                     "lines.linewidth": 1.2, "pdf.fonttype": 42, "savefig.bbox": "tight", "savefig.pad_inches": 0.02})
+plt.rcParams.update({"font.family": "serif", "font.size": 8.5, "axes.labelsize": 8.5, "axes.titlesize": 8.5, "legend.fontsize": 8,
+                     "xtick.labelsize": 8, "ytick.labelsize": 8, "axes.linewidth": 0.6, "lines.linewidth": 1.2, "pdf.fonttype": 42,
+                     "savefig.bbox": "tight"})
 COL = {"ours": "#1f5fbf", "gs": "#7a7a7a", "gm": "#b54708", "accent": "#2e8b57", "bad": "#c0392b"}
 ONE_COL, TWO_COL = 3.5, 7.16      # IEEE column / page width in inches
+PRINT_ONE, PRINT_TWO = 3.08, 6.87  # printed widths of the single- (0.88\linewidth) and two-column (0.96\textwidth) figures
 
 
 def table(exp: str, method: str, variant: str | None = None) -> pd.DataFrame:
@@ -73,7 +74,7 @@ SURVIVAL = {  # cell -> per-element sign survival p (measured on GS images, anim
 
 def fig_law():
     gs16, gs256 = table("final", "gaussian_shading"), table("final_gs256", "gaussian_shading")
-    fig, (a, b) = plt.subplots(1, 2, figsize=(ONE_COL * 2, 2.0), gridspec_kw={"width_ratios": [1, 1.25]})
+    fig, (a, b) = plt.subplots(1, 2, figsize=(PRINT_ONE, 1.6), gridspec_kw={"width_ratios": [1, 1.15]})
     errs = []
     for df, n, mk, lab in ((gs16, 1024, "o", "GS-16 ($n{=}1024$)"), (gs256, 64, "s", "GS-256 ($n{=}64$)")):
         xs, ys = [], []
@@ -85,19 +86,20 @@ def fig_law():
         a.scatter(xs, ys, marker=mk, s=16, label=lab, color=COL["gs"] if n == 64 else COL["ours"], zorder=3)
     a.plot([0.5, 1], [0.5, 1], ls="--", lw=0.8, color="k")
     a.set_xlim(0.5, 1.0); a.set_ylim(0.5, 1.0)
-    a.set_xlabel(r"predicted bit acc. $\Phi((2p-1)\sqrt{n})$"); a.set_ylabel("measured bit accuracy")
-    a.set_title(f"(a) prediction vs. measurement (max err {max(errs):.3f})")
-    a.legend(loc="lower right", frameon=False)
+    a.set_xlabel(r"predicted $\Phi((2p-1)\sqrt{n})$"); a.set_ylabel("measured bit acc.")
+    a.set_title("(a) law vs. measurement")
+    print(f"law: max |predicted - measured| = {max(errs):.3f}")
+    a.legend(loc="lower right", frameon=False, handletextpad=0.3, borderaxespad=0.2)
     n = np.logspace(0, 4.3, 200)
     for p, ls in ((0.549, "-"), (0.527, "--"), (0.511, ":")):
         b.plot(n, [phi((2 * p - 1) * sqrt(v)) for v in n], ls=ls, color="k", label=f"$p={p}$")
     for v, txt in ((64, "256 bit\n(64 votes)"), (1024, "16 bit\n(1024 votes)")):
         b.axvline(v, color=COL["bad"] if v == 64 else COL["accent"], lw=0.8)
-        b.text(v * 1.08, 0.52, txt, fontsize=6.5, color=COL["bad"] if v == 64 else COL["accent"])
-    b.set_xscale("log"); b.set_ylim(0.5, 1.0); b.set_xlabel("votes per bit $n$"); b.set_ylabel("predicted bit accuracy")
-    b.set_title("(b) survival after img2img @0.3 / 0.5 / 0.7")
-    b.legend(loc="upper left", frameon=False)
-    fig.tight_layout(w_pad=1.0)
+        b.text(v * 1.08, 0.52, txt, fontsize=8.5, color=COL["bad"] if v == 64 else COL["accent"])
+    b.set_xscale("log"); b.set_ylim(0.5, 1.0); b.set_xlabel("votes per bit $n$"); b.set_ylabel("predicted bit acc.")
+    b.set_title("(b) accuracy vs. votes")
+    b.legend(loc="upper left", frameon=False, handlelength=1.4, borderaxespad=0.2)
+    fig.tight_layout(w_pad=0.6)
     fig.savefig(OUT / "law.pdf"); plt.close(fig)
     print("law: max |pred-meas| =", round(max(errs), 4))
 
@@ -145,7 +147,7 @@ def fig_ablation():
              (["img2img_anime@0.3"], "img2img\n0.3"), (["img2img_anime@0.5"], "img2img\n0.5")]
     variants = [(_opt("final_gs256q", "gaussian_shading", "soft"), "spatial, hard"), (_opt("final_gs256s", "gaussian_shading", "soft"), "spatial, soft"),
                 (_opt("final256h", "stylering", "no_ecc"), "Fourier, hard"), (_opt(_first("final256ua", "final256"), "stylering", "no_ecc"), "Fourier, soft")]
-    fig = plt.figure(figsize=(TWO_COL, 2.0))
+    fig = plt.figure(figsize=(PRINT_TWO, 1.85))
     gs = fig.add_gridspec(1, 4, width_ratios=[1.5, 1.15, 0.85, 1.2], wspace=0.4, left=0.05, right=0.995, bottom=0.2, top=0.88)
     a, b, c = fig.add_subplot(gs[0]), fig.add_subplot(gs[1]), fig.add_subplot(gs[2])
     w = 0.2
@@ -153,25 +155,25 @@ def fig_ablation():
         ys = [_pick([df], ks, "tpr_1fpr") for ks, _ in cells]
         shade = ["#c7c7c7", "#8f8f8f", "#8fb3e6", COL["ours"]][i]
         a.bar(np.arange(len(cells)) + (i - 1.5) * w, ys, w, color=shade, label=lab, edgecolor="k", lw=0.3)
-    a.set_xticks(range(len(cells))); a.set_xticklabels([lab for _, lab in cells], fontsize=7); a.set_xlim(-0.6, len(cells) - 0.4)
+    a.set_xticks(range(len(cells))); a.set_xticklabels([lab for _, lab in cells], fontsize=8); a.set_xlim(-0.6, len(cells) - 0.4)
     a.set_ylim(0, 1.3); a.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0]); a.set_ylabel("TPR@1%FPR (256 bits)")
     a.set_title("(a) embedding domain $\\times$ vote type")
-    a.legend(loc="upper right", frameon=False, ncol=2, fontsize=7, handlelength=1.0, labelspacing=0.3, columnspacing=0.8)
+    a.legend(loc="upper right", frameon=False, ncol=2, fontsize=8, handlelength=1.0, labelspacing=0.3, columnspacing=0.8)
     rings = np.arange(1, 45)
     for k, lab, col in (("regen_sd:2.0", "regen. $\\times$2", COL["ours"]), ("img2img_anime:0.5", "img2img 0.5", COL["accent"])):
         b.plot(rings, S[k]["hard"], color=col, lw=1.0, label=lab)
         b.plot(rings, S[k]["weighted"], color=col, lw=1.0, ls="--")
     sp = S["regen_sd:2.0"]["spatial_hard"]
     b.axhline(sp, color="k", lw=0.6, ls=":")
-    b.text(2, sp - 0.012, "spatial, hard", ha="left", va="top", fontsize=7)
+    b.text(2, sp - 0.012, "spatial, hard", ha="left", va="top", fontsize=8)
     b.set_xlabel("ring $r$"); b.set_ylabel("sign survival"); b.set_ylim(0.48, 0.8); b.set_xlim(1, 44)
-    b.set_title("(b) survival per ring"); b.legend(frameon=False, fontsize=7, handlelength=1.4, loc="upper right", labelspacing=0.3)
+    b.set_title("(b) survival per ring"); b.legend(frameon=False, fontsize=8, handlelength=1.4, loc="upper right", labelspacing=0.3)
     b.grid(alpha=0.25, lw=0.5)
     ks = [("main", "1"), ("abl_sec4", "4"), ("abl_sec8", "8"), ("abl_sec16", "16"), ("abl_sec32", "32"), ("abl_sec0", "pair")]
     tpr = [fam(table(e, "stylering"), "img2img", "0.5", "tpr_1fpr") for e, _ in ks]
     c.plot(range(len(ks)), tpr, marker="o", ms=3.5, color=COL["ours"])
     for i, t in enumerate(tpr):
-        c.text(i, t + 0.02, f"{t:.2f}", ha="center", fontsize=7)
+        c.text(i, t + 0.02, f"{t:.2f}", ha="center", fontsize=8)
     c.set_xticks(range(len(ks))); c.set_xticklabels([k for _, k in ks])
     c.set_xlabel("sectors per ring $n_s$"); c.set_ylabel("TPR@1%FPR, img2img 0.5")
     c.set_ylim(0, 0.7); c.set_title("(c) coherent chips: robust")
@@ -192,7 +194,7 @@ def fig_ablation():
             for sp in ax.spines.values():
                 sp.set_linewidth(0.4)
             if r == 0:
-                ax.set_title(lab, fontsize=7.5, pad=2)
+                ax.set_title(lab, fontsize=8.5, pad=2)
     fig.savefig(OUT / "ablation.pdf"); plt.close(fig)
 
 
@@ -242,7 +244,7 @@ def fig_gm():
     series = [("\\method-256 (ours)".replace("\\method", "SpecShade"), ours, COL["ours"], "o"), ("GS-256", gs, COL["gs"], "s"),
               ("GaussMarker-256", [gm], COL["gm"], "D"), ("SFW (HSQR)", sfw, COL["accent"], None), ("MaXsive", mx, "#8e44ad", None)]
     x = np.arange(len(GM_KEYS)); w = 0.16
-    fig, (a, b) = plt.subplots(2, 1, figsize=(TWO_COL, 2.8), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]})
+    fig, (a, b) = plt.subplots(2, 1, figsize=(PRINT_TWO, 2.8), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]})
     for k, (lab, dfs, c, mk) in enumerate(series):
         tpr = [_pick(dfs, cells, "tpr_1fpr") for _, cells in GM_KEYS]
         a.bar(x + (k - 2) * w, tpr, w, color=c, label=lab, edgecolor="none")
@@ -250,15 +252,15 @@ def fig_gm():
             acc = [_pick(dfs, cells, "bit_acc_all") for _, cells in GM_KEYS]
             b.plot(x + (k - 2) * w, acc, mk, ms=4, color=c, label=lab, ls="none")
     a.set_ylabel("TPR@1%FPR"); a.set_ylim(0, 1.05); a.grid(axis="y", alpha=0.25, lw=0.5)
-    a.legend(ncol=5, loc="lower left", frameon=False, bbox_to_anchor=(0.0, 1.0), fontsize=7, handlelength=1.2, columnspacing=1.0)
-    b.axhline(0.5, color="k", lw=0.6, ls=":"); b.text(-0.45, 0.505, "chance", fontsize=6.5, ha="left", va="bottom")
+    a.legend(ncol=5, loc="lower left", frameon=False, bbox_to_anchor=(0.0, 1.0), fontsize=8, handlelength=1.2, columnspacing=1.0)
+    b.axhline(0.5, color="k", lw=0.6, ls=":"); b.text(-0.45, 0.505, "chance", fontsize=8.5, ha="left", va="bottom")
     b.axhline(gm_tau, color=COL["gm"], lw=0.9, ls="--")
-    b.text(-0.45, gm_tau + 0.006, rf"GaussMarker $\tau$ ({gm_tau:.3f})", fontsize=6.5, color=COL["gm"], ha="left", va="bottom")
+    b.text(-0.45, gm_tau + 0.006, rf"GaussMarker $\tau$ ({gm_tau:.3f})", fontsize=8.5, color=COL["gm"], ha="left", va="bottom")
     b.set_ylabel("bit accuracy"); b.set_ylim(0.45, 1.02); b.grid(axis="y", alpha=0.25, lw=0.5)
     for ax in (a, b):
         for g in (3.5, 8.5, 10.5):                    # regeneration | style transfer | classical | geometric
             ax.axvline(g, color="k", lw=0.4, alpha=0.4)
-    b.set_xticks(x); b.set_xticklabels([l for l, _ in GM_KEYS], fontsize=6.5, rotation=30, ha="right", rotation_mode="anchor")
+    b.set_xticks(x); b.set_xticklabels([l for l, _ in GM_KEYS], fontsize=8.5, rotation=30, ha="right", rotation_mode="anchor")
     fig.tight_layout(h_pad=0.4)
     fig.savefig(OUT / "gm.pdf"); plt.close(fig)
 
@@ -277,7 +279,7 @@ def fig_geo():
     # GS-256 decoded with the SAME synchronisation and the soft vote (fourcell_queue.sh / cropsweep_queue.sh): the embedding
     # domain under one detector; shown on the crop panels, where the two domains part below a = 0.5.
     gss_geo, gss_crop = _opt("gsync_geo", "gaussian_shading", "gss"), _opt("gsync_crop", "gaussian_shading", "gss")
-    fig, (a, b, c) = plt.subplots(1, 3, figsize=(TWO_COL, 1.75))
+    fig, (a, b, c) = plt.subplots(1, 3, figsize=(PRINT_TWO, 1.65))
     ints, halves = [15, 30, 45, 75, 90], [7.5, 22.5, 37.5, 67.5]
     allang = sorted(ints + halves)
     def rot(df, ang, col):
@@ -292,7 +294,7 @@ def fig_geo():
         a.plot(halves, [rot(geof, g, col) for g in halves], "o", ms=3.5, mfc="white", color=COL["ours"])
         a.plot(ints, [rot(gsg, g, col) for g in ints], ls=ls, marker="s", ms=3, color=COL["gs"], lw=1.0, label=f"GS-256 {lab}")
     a.set_xlabel("rotation angle (deg)"); a.set_ylim(-0.03, 1.03); a.set_xticks([0, 15, 30, 45, 60, 75, 90])
-    a.set_title("(a) rotation"); a.grid(alpha=0.25, lw=0.5); a.legend(loc="center right", frameon=False, fontsize=6)
+    a.set_title("(a) rotation"); a.grid(alpha=0.25, lw=0.5); a.legend(loc="center right", frameon=False, fontsize=8)
     big, small = [0.9, 0.75, 0.5], [0.4, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]
     def crop(df, x, col):
         k = f"crop_scale@{x}"
@@ -311,7 +313,7 @@ def fig_geo():
         ax.set_xlabel("retained area fraction $a$"); ax.set_ylabel(yl); ax.invert_xaxis(); ax.grid(alpha=0.25, lw=0.5)
     b.set_ylim(-0.03, 1.03); c.set_ylim(0.45, 1.01)
     b.set_title("(b) crop: detection"); c.set_title("(c) crop: decoding")
-    b.legend(loc="center left", frameon=False, fontsize=6)
+    b.legend(loc="center left", frameon=False, fontsize=8)
     fig.tight_layout(w_pad=0.8)
     fig.savefig(OUT / "geo.pdf"); plt.close(fig)
 
@@ -338,7 +340,7 @@ def fig_capacity():
     for ax, yl in ((a, "bit accuracy"), (b, "TPR@1%FPR")):
         ax.set_xticks(range(len(Ls))); ax.set_xticklabels(Ls); ax.set_xlabel("payload (bits)"); ax.set_ylabel(yl); ax.grid(alpha=0.25, lw=0.5)
     a.set_ylim(0.5, 1.02); b.set_ylim(-0.03, 1.03)
-    a.legend(frameon=False, fontsize=6, loc="lower left")
+    a.legend(frameon=False, fontsize=8, loc="lower left")
     fig.tight_layout(w_pad=0.8)
     fig.savefig(OUT / "capacity.pdf"); plt.close(fig)
 
