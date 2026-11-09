@@ -106,7 +106,7 @@ for k, tag in (("ours", "Ours"), ("gs", "GS"), ("gm", "GM")):
         dlo, dhi = np.quantile(boot[k] - boot["none"], [0.025, 0.975])
         summary[k]["fid_diff_ci"] = [float(dlo), float(dhi)]
         lines += [f"\\newcommand{{\\nQFidDiff{tag}Lo}}{{{dlo:+.1f}}}", f"\\newcommand{{\\nQFidDiff{tag}Hi}}{{{dhi:+.1f}}}"]
-lines.append(f"\\newcommand{{\\nQFidBootN}}{{{N_BOOT}}}")
+lines.append(f"\\newcommand{{\\nQFidBootN}}{{{N_BOOT:,}}}".replace(",", "{,}"))
 (OUT / "numbers_quality.tex").write_text("\n".join(lines) + "\n")
 (RES / "quality_ci.json").write_text(json.dumps(summary, indent=1))
 print(json.dumps(summary, indent=1))
