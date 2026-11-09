@@ -82,7 +82,9 @@ SRC = {
     "gm": [("gm256a", "gaussmarker_full", "detect.jsonl", "detect_null.jsonl")],
     "sfw": [("final_sfw", "sfw_hsqr", "detect_known.jsonl", "detect_null_known.jsonl")],     # verification protocol (known key)
     "mx": [("final_maxsive", "maxsive", "detect.jsonl", "detect_null.jsonl")],              # one fixed watermark, as GaussMarker
+    "t2s": [("final_t2s", "t2smark", "detect.jsonl", "detect_null.jsonl")],                # official defaults, statistic = key-channel L1 norm
 }
+SRC = {m: s for m, s in SRC.items() if m != "t2s" or (RES / "final_t2s" / "t2smark" / "detect.jsonl").exists()}   # optional until it has run
 DATA = {m: [(cells(e, mm, d), null(e, mm, n)) for e, mm, d, n in src] for m, src in SRC.items()}
 
 
@@ -178,7 +180,8 @@ KEYS = [("Regen.\\ $\\times1$", "regen_sd", 1.0), ("Regen.\\ $\\times2$", "regen
         ("AdaIN $\\alpha{=}0.6$", "adain_anime", 0.6), ("AdaIN $\\alpha{=}1.0$", "adain_anime", 1.0), ("IP2P $g_I{=}1.0$", "ip2p_anime", 1.0),
         ("JPEG $Q{=}25$", "jpeg", 25.0), ("Blur $r{=}8$", "blur", 8.0), ("Crop $a{=}0.75$", "crop_scale", 0.75),
         ("Rotation $75^{\\circ}$", "rotate", 75.0), ("Mirror", "mirror", 0.0), ("img2img + crop", "combo_style_crop", 1.0)]
-M = ("ours", "gs", "gm", "sfw", "mx")          # AUC for all five; TPR intervals for the three 256-bit payload methods
+M = tuple(m for m in ("ours", "gs", "gm", "sfw", "mx", "t2s") if m in SRC)   # AUC for all; TPR intervals for the three 256-bit methods below
+NM = len(M)
 M3 = ("ours", "gs", "gm")
 
 
@@ -220,14 +223,14 @@ N_BOTH = len(both)
 rows.append("\\midrule\nAverage & " + " & ".join(avg_a) + " & " + " & ".join(avg_t) + "\\\\")
 body = r"""\begin{table*}[t]
 \centering
-\caption{AUC of the five compared methods and TPR@1\%FPR with its 95\% interval of the 256-bit methods on the 15 key attacks. The interval is a bootstrap over the 100 prompts in which both attacked versions of a prompt are resampled together (Clopper--Pearson over the 100 prompts when every image or none is detected). Style-transfer rows use the anime style, whereas Table~\ref{tab:main} averages three styles. Best in bold.}
+\caption{AUC of the """ + ("six" if NM == 6 else "five") + r""" compared methods and TPR@1\%FPR with its 95\% interval of the 256-bit methods on the 15 key attacks. The interval is a bootstrap over the 100 prompts in which both attacked versions of a prompt are resampled together (Clopper--Pearson over the 100 prompts when every image or none is detected). Style-transfer rows use the anime style, whereas Table~\ref{tab:main} averages three styles. Best in bold.}
 \label{tab:stats}
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{lcccccccc}
+\setlength{\tabcolsep}{""" + ("2.6pt" if NM == 6 else "3.5pt") + r"""}
+\begin{tabular}{l""" + "c" * NM + r"""ccc}
 \toprule
- & \multicolumn{5}{c}{AUC} & \multicolumn{3}{c}{TPR@1\%FPR [95\% CI]}\\
-\cmidrule(lr){2-6}\cmidrule(lr){7-9}
-Attack & \textbf{\method} & GS & GaussMarker & SFW & MaXsive & \textbf{\method} & GS & GaussMarker\\
+ & \multicolumn{""" + str(NM) + r"""}{c}{AUC} & \multicolumn{3}{c}{TPR@1\%FPR [95\% CI]}\\
+\cmidrule(lr){2-""" + str(NM + 1) + r"""}\cmidrule(lr){""" + str(NM + 2) + "-" + str(NM + 4) + r"""}
+Attack & \textbf{\method} & GS & GaussMarker & SFW & MaXsive""" + (" & T2SMark" if NM == 6 else "") + r""" & \textbf{\method} & GS & GaussMarker\\
 \midrule
 """ + "\n".join(rows) + r"""
 \bottomrule
@@ -389,7 +392,7 @@ for a, s in nongeo:
 nm["CiGroupMax"] = max(ghw); nm["CiGroupMedian"] = float(np.median(ghw))
 nm["CiAboveGS"] = ABOVE["gs"]; nm["CiAboveGM"] = ABOVE["gm"]
 nm["CiIdentMcMaxDiff"] = max(MC_DIFF); nm["NIdentCodebooks"] = N_CODEBOOKS
-for m, tag in (("sfw", "SFW"), ("mx", "MX"), ("gm", "GM"), ("ours", "Ours"), ("gs", "GS")):
+for m, tag in (("sfw", "SFW"), ("mx", "MX"), ("gm", "GM"), ("ours", "Ours"), ("gs", "GS"), ("t2s", "TSM")):
     if acc[m]["tpr1"]:
         nm[f"KeyAvgTpr{tag}"] = float(np.nanmean(acc[m]["tpr1"])); nm[f"KeyAvgAuc{tag}"] = float(np.nanmean(acc[m]["auc"]))
 nm["NFprCalOurs"] = HELD["ours"]["k_cal"]

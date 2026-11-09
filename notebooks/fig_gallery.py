@@ -104,7 +104,7 @@ GRID = [
      ("mirror", 1, "Vertical flip"), ("combo_crop_rotate", 1, "Crop + rotation"),
      ("combo_style_mirror", 1, "IP2P + mirror"), ("combo_style_crop", 1, "img2img + crop"), ("combo_regen_rotate", 1, "Regen.\\ + rotation")],
 ]
-w = 0.092      # tile width of the attack examples (four rows)
+w = 0.088      # tile width of the attack examples (four rows)
 rows, missing = [], []
 for r, line in enumerate(GRID):
     ims, labs, nums = [], [], []

@@ -36,3 +36,9 @@ ringid:
   alpha: 64.0         # PAPER [3]: discretisation to +-64 in the Fourier domain
   eta: 0.85           # PAPER [3]: spatial-shift damping factor in [0.8, 0.9]
   spatial_shift: true
+t2smark:              # T2SMark (NeurIPS'25) [yang2025t2smark]: official defaults (256-bit message in channels 1-3, 16-bit session key in channel 0, tau 0.674)
+  msg_length: 256
+  key_length: 16
+  tau: 0.674
+  key_channel: 0
+  key: "t2s-master-key-v1"

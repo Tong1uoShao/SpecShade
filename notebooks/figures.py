@@ -243,16 +243,19 @@ def fig_gm():
     sfw, mx = [_opt("final_sfw", "sfw_hsqr", "known")], [_opt("final_maxsive", "maxsive")]
     series = [("\\method-256 (ours)".replace("\\method", "SpecShade"), ours, COL["ours"], "o"), ("GS-256", gs, COL["gs"], "s"),
               ("GaussMarker-256", [gm], COL["gm"], "D"), ("SFW (HSQR)", sfw, COL["accent"], None), ("MaXsive", mx, "#8e44ad", None)]
-    x = np.arange(len(GM_KEYS)); w = 0.16
+    t2s = _opt("final_t2s", "t2smark")                 # T2SMark (official defaults, ported) when its run exists
+    if t2s is not None:
+        series.append(("T2SMark", [t2s], "#c0392b", "v"))
+    x = np.arange(len(GM_KEYS)); w = 0.8 / len(series); off = (len(series) - 1) / 2
     fig, (a, b) = plt.subplots(2, 1, figsize=(PRINT_TWO, 2.8), sharex=True, gridspec_kw={"height_ratios": [1.45, 1]})
     for k, (lab, dfs, c, mk) in enumerate(series):
         tpr = [_pick(dfs, cells, "tpr_1fpr") for _, cells in GM_KEYS]
-        a.bar(x + (k - 2) * w, tpr, w, color=c, label=lab, edgecolor="none")
+        a.bar(x + (k - off) * w, tpr, w, color=c, label=lab, edgecolor="none")
         if mk is not None:
             acc = [_pick(dfs, cells, "bit_acc_all") for _, cells in GM_KEYS]
-            b.plot(x + (k - 2) * w, acc, mk, ms=4, color=c, label=lab, ls="none")
+            b.plot(x + (k - off) * w, acc, mk, ms=4, color=c, label=lab, ls="none")
     a.set_ylabel("TPR@1%FPR"); a.set_ylim(0, 1.05); a.grid(axis="y", alpha=0.25, lw=0.5)
-    a.legend(ncol=5, loc="lower left", frameon=False, bbox_to_anchor=(0.0, 1.0), fontsize=8, handlelength=1.2, columnspacing=1.0)
+    a.legend(ncol=len(series), loc="lower left", frameon=False, bbox_to_anchor=(0.0, 1.0), fontsize=8, handlelength=1.2, columnspacing=1.0)
     b.axhline(0.5, color="k", lw=0.6, ls=":"); b.text(-0.45, 0.505, "chance", fontsize=8.5, ha="left", va="bottom")
     b.axhline(gm_tau, color=COL["gm"], lw=0.9, ls="--")
     b.text(-0.45, gm_tau + 0.006, rf"GaussMarker $\tau$ ({gm_tau:.3f})", fontsize=8.5, color=COL["gm"], ha="left", va="bottom")

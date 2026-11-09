@@ -46,6 +46,9 @@ def build_method(name: str, cfg: dict, backend) -> WatermarkMethod:
     if name in ("sfw_hstr", "sfw_hsqr"):
         from models.baseline.sfw import SFWWM
         return SFWWM(cfg, backend, variant=name.split("_")[1])
+    if name == "t2smark":
+        from models.baseline.t2smark import T2SMarkWM
+        return T2SMarkWM(cfg, backend)
     if name == "vine":
         from models.baseline.vine import VineWM
         return VineWM(cfg, backend)

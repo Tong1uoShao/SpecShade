@@ -130,6 +130,7 @@ def table_main():
 \centering
 \caption{Robustness against non-geometric and basic geometric attacks (TPR@1\%FPR and bit accuracy). Methods with other capacities are listed by TPR only; style-transfer rows average three styles. Best in bold; second best underlined unless at chance level.}
 \label{tab:main}
+\renewcommand{\arraystretch}{0.90}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccccccc}
 \toprule

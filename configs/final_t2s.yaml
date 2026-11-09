@@ -1,0 +1,39 @@
+# T2SMark baseline on the same SD1.5 backend, prompts and attacks as every other method (t2s_queue.sh).
+# Same backend, prompts and seeds as the main experiments (configs/final256.yaml); null = finalq/none (1,000 images).
+paths:
+  prompts: data/prompts/sdp_1000.jsonl
+  prompts_quality: data/prompts/sdp_5000.jsonl
+  coco_fid: data/coco_fid/val2017
+  results: results
+  survival_map: results/probe/survival_map.npz
+
+backend:
+  model_id: stable-diffusion-v1-5/stable-diffusion-v1-5
+  prefer_fp16: true
+  size: 512
+  latent: 64
+  gen_steps: 50
+  cfg: 7.5
+  inv_steps: 50
+  inv_guidance: 0.0
+
+seeds: [97, 101]
+
+stylering:
+  n_bits: 256
+  bch: {n: 63, k: 16}
+  key: "stylering-demo-key-v1"
+  alloc_strategy: measured
+  chase_flip: 8
+  r_min: 1
+  r_max: 31
+  sectors: 0
+  sector_rotate: 0
+  decode_variant: soft
+
+methods:
+  t2smark: {}
+
+quality:
+  clip_model: ViT-g-14
+  fid_n: 5000
