@@ -193,6 +193,7 @@ def best(vals, nd):
 
 rows, acc, WINS = [], {m: {"auc": [], "tpr01": [], "tpr1": []} for m in M}, {m: 0 for m in M}
 ABOVE = {"gs": 0, "gm": 0}          # key attacks on which the paired difference interval TPR(ours) - TPR(other) excludes zero (in favor of ours)
+AUC_ABOVE_GM = 0                      # key attacks on which GaussMarker's AUC exceeds ours (pairwise; WINS counts the best of all methods)
 for lab, a, s_ in KEYS:
     st = {m: stats(m, a, s_) for m in M}
     sg = {m: stats_grouped(m, a, s_) for m in M}
@@ -202,6 +203,8 @@ for lab, a, s_ in KEYS:
     _v = [st[m]["auc"] if st[m] else float("nan") for m in M]
     for m, v in zip(M, _v):
         WINS[m] += int(v >= np.nanmax(_v) - 0.0005)
+    if st.get("gm") and st.get("ours"):
+        AUC_ABOVE_GM += int(st["gm"]["auc"] > st["ours"]["auc"] + 0.0005)
     for m in ("gs", "gm"):
         di = diff_interval("ours", m, a, s_)
         if di and di[0] > 0:
@@ -382,7 +385,7 @@ nm = {}
 nm["AvgAucOurs"] = np.mean([r["auc"] for r in tab["ours"]]); nm["AvgAucGS"] = np.mean([r["auc"] for r in tab["gs"]])
 nm["AvgTprZeroOneOurs"] = np.mean([o for o, _ in both]); nm["AvgTprZeroOneGS"] = np.mean([g for _, g in both]); nm["NBoth"] = N_BOTH
 hw = [r["ci"] for r in tab["ours"]]
-nm["AucWinsOurs"] = WINS["ours"]; nm["AucWinsGM"] = WINS["gm"]; nm["CiMax"] = max(hw); nm["CiMedian"] = float(np.median(hw)); nm["NCells"] = len(nongeo)
+nm["AucWinsOurs"] = WINS["ours"]; nm["AucWinsGM"] = WINS["gm"]; nm["AucAboveGM"] = AUC_ABOVE_GM; nm["CiMax"] = max(hw); nm["CiMedian"] = float(np.median(hw)); nm["NCells"] = len(nongeo)
 # prompt-grouped half-widths over the same cells, and the held-out calibration numbers
 ghw = []
 for a, s in nongeo:

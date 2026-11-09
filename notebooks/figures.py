@@ -172,8 +172,12 @@ def fig_ablation():
     tpr = [fam(table(e, "stylering"), "img2img", "0.5", "tpr_1fpr") for e, _ in ks]
     c.plot(range(len(ks)), tpr, marker="o", ms=3.5, color=COL["ours"])
     for i, t in enumerate(tpr):                       # label the first, the n_s = 8 and the last point only (the rest is in the text)
-        if i in (0, 2, len(tpr) - 1):
-            c.text(i + (0.15 if i == 0 else 0), t + 0.025, f"{t:.2f}", ha="center", va="bottom", fontsize=7.5)
+        if i == 0:                                    # end labels are aligned towards the inside so that they stay within the frame
+            c.text(i + 0.06, t + 0.025, f"{t:.2f}", ha="left", va="bottom", fontsize=7.5)
+        elif i == 2:
+            c.text(i, t + 0.025, f"{t:.2f}", ha="center", va="bottom", fontsize=7.5)
+        elif i == len(tpr) - 1:
+            c.text(i - 0.05, t - 0.03, f"{t:.2f}", ha="right", va="top", fontsize=7.5)
     c.set_xticks(range(len(ks))); c.set_xticklabels([k for _, k in ks], fontsize=7.5)
     c.set_xlabel("sectors per ring $n_s$"); c.set_ylabel("TPR, img2img 0.5")
     c.set_ylim(0, 0.72); c.set_title("(c) coherent chips: robust")
@@ -282,7 +286,7 @@ def fig_geo():
     # GS-256 decoded with the SAME synchronisation and the soft vote (fourcell_queue.sh / cropsweep_queue.sh): the embedding
     # domain under one detector; shown on the crop panels, where the two domains part below a = 0.5.
     gss_geo, gss_crop = _opt("gsync_geo", "gaussian_shading", "gss"), _opt("gsync_crop", "gaussian_shading", "gss")
-    fig, (a, b, c) = plt.subplots(1, 3, figsize=(PRINT_TWO, 1.55))
+    fig, (a, b, c) = plt.subplots(1, 3, figsize=(PRINT_TWO, 1.60))   # one shared legend row below the three panels
     ints, halves = [15, 30, 45, 75, 90], [7.5, 22.5, 37.5, 67.5]
     allang = sorted(ints + halves)
     def rot(df, ang, col):
@@ -296,9 +300,8 @@ def fig_geo():
         a.plot(ints, [rot(geo, g, col) for g in ints], "o", ms=3.5, color=COL["ours"])
         a.plot(halves, [rot(geof, g, col) for g in halves], "o", ms=3.5, mfc="white", color=COL["ours"])
         a.plot(ints, [rot(gsg, g, col) for g in ints], ls=ls, marker="s", ms=3, color=COL["gs"], lw=1.0, label="GS-256" if col == "tpr_1fpr" else None)
-    a.set_xlabel("rotation angle (deg)"); a.set_ylim(-0.03, 1.03); a.set_xticks([0, 15, 30, 45, 60, 75, 90])
+    a.set_xlabel("rotation angle (deg)"); a.set_ylim(-0.03, 1.03); a.set_xticks([0, 15, 30, 45, 60, 75, 90]); a.set_yticks([0, 0.5, 1.0])
     a.set_title("(a) rotation"); a.grid(alpha=0.25, lw=0.5)
-    a.legend(loc="lower center", bbox_to_anchor=(0.5, 0.08), frameon=False, ncol=2, fontsize=7.5, handlelength=1.4, columnspacing=1.0)
     big, small = [0.9, 0.75, 0.5], [0.4, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]
     def crop(df, x, col):
         k = f"crop_scale@{x}"
@@ -315,10 +318,15 @@ def fig_geo():
             ax.plot(big + small, [crop(gss_geo, x, col) for x in big] + [crop(gss_crop, x, col) for x in small], ls=":", marker="s", ms=3,
                     mfc="white", color=COL["gs"], lw=1.0, label="GS-256 + sync.")
         ax.set_xlabel("retained area fraction $a$"); ax.set_ylabel(yl); ax.invert_xaxis(); ax.grid(alpha=0.25, lw=0.5)
-    b.set_ylim(-0.03, 1.03); c.set_ylim(0.45, 1.01)
+    b.set_ylim(-0.03, 1.03); c.set_ylim(0.45, 1.01); b.set_yticks([0, 0.5, 1.0]); c.set_yticks([0.5, 0.75, 1.0])
+    for ax in (b, c):
+        ax.set_xticks([0.75, 0.5, 0.25]); ax.set_xticklabels(["0.75", "0.50", "0.25"])
     b.set_title("(b) crop: detection"); c.set_title("(c) crop: decoding")
-    b.legend(loc="center left", bbox_to_anchor=(-0.02, 0.47), frameon=False, fontsize=7.5, handlelength=1.1, handletextpad=0.4, labelspacing=0.25)
-    fig.tight_layout(w_pad=0.8)
+    # the four series of (b)/(c) in one row below the panels; (a) uses the first and third of them (solid TPR, dashed accuracy)
+    fig.tight_layout(w_pad=0.8, rect=(0, 0.1, 1, 1))
+    hs, ls = b.get_legend_handles_labels()
+    fig.legend(hs, ls, loc="lower center", bbox_to_anchor=(0.5, 0.0), ncol=4, frameon=False, fontsize=7.5, handlelength=1.6,
+               handletextpad=0.5, columnspacing=2.0)
     fig.savefig(OUT / "geo.pdf"); plt.close(fig)
 
 
