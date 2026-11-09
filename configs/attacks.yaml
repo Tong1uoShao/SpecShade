@@ -66,6 +66,9 @@ capacity_lite:   # OURS: reduced capacity sweep (one attack), 20 images x 1 seed
 crop_sweep: # OURS: how small can a random crop get (area fraction; side = sqrt)
   crop_scale:  {engine: crop_scale,  strengths: [0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]}
 
+crop_sweep_deep:   # OURS: the deep-crop settings repeated with further crop positions (attack seeds 101, 202)
+  crop_scale:  {engine: crop_scale,  strengths: [0.5, 0.4, 0.3, 0.25, 0.2]}
+
 combo_matrix:   # OURS: compound-attack matrix, regeneration strength x geometric strength (supplementary; 1 seed x 100 images)
   cm_regen1_rot15:   {engine: combo, style: "diffusion_regen@1+rotate@15",            strengths: [1]}
   cm_regen1_rot30:   {engine: combo, style: "diffusion_regen@1+rotate@30",            strengths: [1]}

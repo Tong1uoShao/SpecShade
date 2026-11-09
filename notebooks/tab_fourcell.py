@@ -81,9 +81,9 @@ for lab, key in CELLS:
     rows.append(f"{lab} & " + " & ".join(cells) + "\\\\")
 rows.append("\\midrule\nAverage & " + " & ".join((f"{np.mean(m['t']):.2f} & {np.mean(m['a']):.3f}" if m["t"] else "-- & --") for m in means.values()) + "\\\\")
 times = {k: det_time(*DET[k][1][0]) for k in DET}
-VF = RES / "verify_fallback.json"          # SpecShade timed with the final fallback rule (joint search only when neither flip candidate is aligned)
-if VF.exists():
-    vf = json.load(open(VF)); times["ours"] = times["ourh"] = (vf["geo256u"]["t_new_s"], vf["null"]["t_new_s"])
+TP = RES / "time_paths.json"               # SpecShade timed with the final fallback rule (src/proto_time_paths.py): aligned path / unwatermarked
+if TP.exists():
+    tp = json.load(open(TP)); times["ours"] = times["ourh"] = (tp["geo256u"]["mean"], tp["null"]["mean"])
 rows.append("Detection time (s), attacked / unwm. & " + " & ".join(
     (f"\\multicolumn{{2}}{{c}}{{{t:.1f} / {tn:.1f}}}" if t == t else "\\multicolumn{2}{c}{--}") for t, tn in times.values()) + "\\\\")
 body = r"""\begin{table*}[t]

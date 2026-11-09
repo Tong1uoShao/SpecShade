@@ -147,7 +147,7 @@ def fig_ablation():
              (["img2img_anime@0.3"], "img2img\n0.3"), (["img2img_anime@0.5"], "img2img\n0.5")]
     variants = [(_opt("final_gs256q", "gaussian_shading", "soft"), "spatial, hard"), (_opt("final_gs256s", "gaussian_shading", "soft"), "spatial, soft"),
                 (_opt("final256h", "stylering", "no_ecc"), "Fourier, hard"), (_opt(_first("final256ua", "final256"), "stylering", "no_ecc"), "Fourier, soft")]
-    fig = plt.figure(figsize=(PRINT_TWO, 1.85))
+    fig = plt.figure(figsize=(PRINT_TWO, 1.72))
     gs = fig.add_gridspec(1, 4, width_ratios=[2.0, 1.05, 0.95, 1.0], wspace=0.38, left=0.05, right=0.995, bottom=0.2, top=0.88)
     a, b, c = fig.add_subplot(gs[0]), fig.add_subplot(gs[1]), fig.add_subplot(gs[2])
     w = 0.19
@@ -279,7 +279,7 @@ def fig_geo():
     # GS-256 decoded with the SAME synchronisation and the soft vote (fourcell_queue.sh / cropsweep_queue.sh): the embedding
     # domain under one detector; shown on the crop panels, where the two domains part below a = 0.5.
     gss_geo, gss_crop = _opt("gsync_geo", "gaussian_shading", "gss"), _opt("gsync_crop", "gaussian_shading", "gss")
-    fig, (a, b, c) = plt.subplots(1, 3, figsize=(PRINT_TWO, 1.65))
+    fig, (a, b, c) = plt.subplots(1, 3, figsize=(PRINT_TWO, 1.55))
     ints, halves = [15, 30, 45, 75, 90], [7.5, 22.5, 37.5, 67.5]
     allang = sorted(ints + halves)
     def rot(df, ang, col):
