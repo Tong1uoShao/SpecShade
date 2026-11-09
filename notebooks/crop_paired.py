@@ -2,7 +2,7 @@
 # # Deep-crop sweep: TPR per setting over all crop positions, paired differences SpecShade vs GS-soft + same synchronisation,
 # and the paired difference between neighbouring settings of SpecShade (CPU only).
 # Reads results/ours_crop (unified detector) and results/gsync_crop (detect_gss) with their null files; pairs by (prompt, attack
-# seed). Writes $TAB_OUT/numbers_crop.tex.   Usage: TAB_OUT=$TAB_OUT python notebooks/crop_paired.py
+# seed) and bootstraps over the original images (the crop positions of an image are resampled together). Writes $TAB_OUT/numbers_crop.tex.   Usage: TAB_OUT=$TAB_OUT python notebooks/crop_paired.py
 import json
 import os
 from pathlib import Path
@@ -34,9 +34,12 @@ gs, thr_g = hits(RES / "gsync_crop/gaussian_shading/detect_gss.jsonl", RES / "gs
 print("thresholds", thr_o, thr_g)
 
 
-def paired(x, y, n=5000):
-    idx = RNG.integers(0, len(x), (n, len(x)))
-    d = (y[idx] - x[idx]).mean(1)
+def paired(x, y, groups, n=5000):
+    """95% bootstrap interval of mean(y - x), resampling the ORIGINAL IMAGES (all crop positions of an image move together)."""
+    groups = np.asarray(groups); ug = np.unique(groups)
+    gd = np.array([(y[groups == g] - x[groups == g]).sum() for g in ug]); gn = np.array([(groups == g).sum() for g in ug])
+    idx = RNG.integers(0, len(ug), (n, len(ug)))
+    d = gd[idx].sum(1) / gn[idx].sum(1)
     return float(np.quantile(d, 0.025)), float(np.quantile(d, 0.975))
 
 
@@ -46,7 +49,7 @@ rows = {}
 for a in SETTINGS:
     keys = sorted(set(ours.get(a, {})) & set(gs.get(a, {})))
     o = np.array([ours[a][k] for k in keys]); g = np.array([gs[a][k] for k in keys])
-    lo, hi = paired(g, o)
+    lo, hi = paired(g, o, [k[0] for k in keys])
     rows[a] = {"n": len(keys), "seeds": sorted({k[1] for k in keys}), "ours": o.mean(), "gs": g.mean(), "diff": o.mean() - g.mean(), "lo": lo, "hi": hi}
     print(f"a={a}: n={len(keys)} seeds={rows[a]['seeds']} ours {o.mean():.2f} gs-soft+sync {g.mean():.2f} diff {o.mean()-g.mean():+.2f} [{lo:+.2f}, {hi:+.2f}]")
     lines += [f"\\newcommand{{\\nCropOurs{tag[a]}}}{{{o.mean():.2f}}}", f"\\newcommand{{\\nCropGSS{tag[a]}}}{{{g.mean():.2f}}}",
@@ -55,7 +58,7 @@ for a in SETTINGS:
 for a, b in ((0.4, 0.3), (0.3, 0.25)):
     keys = sorted(set(ours[a]) & set(ours[b]))
     x = np.array([ours[a][k] for k in keys]); y = np.array([ours[b][k] for k in keys])
-    lo, hi = paired(x, y)
+    lo, hi = paired(x, y, [k[0] for k in keys])
     print(f"ours {b} - {a}: {y.mean()-x.mean():+.2f} [{lo:+.2f}, {hi:+.2f}] n={len(keys)}")
     lines += [f"\\newcommand{{\\nCropStep{tag[a]}{tag[b]}}}{{{y.mean()-x.mean():+.2f}}}", f"\\newcommand{{\\nCropStepLo{tag[a]}{tag[b]}}}{{{lo:+.2f}}}", f"\\newcommand{{\\nCropStepHi{tag[a]}{tag[b]}}}{{{hi:+.2f}}}"]
 n_img = rows[0.3]["n"]; lines.append(f"\\newcommand{{\\nCropN}}{{{n_img}}}"); lines.append(f"\\newcommand{{\\nCropSeeds}}{{{len(rows[0.3]['seeds'])}}}")
