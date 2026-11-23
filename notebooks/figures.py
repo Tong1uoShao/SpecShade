@@ -22,12 +22,24 @@ RES = ROOT / "results"
 OUT = Path(os.environ.get("FIG_OUT", ROOT.parent / "docs" / "manuscripts" / "figs"))
 OUT.mkdir(parents=True, exist_ok=True)
 
-plt.rcParams.update({"font.family": "serif", "font.size": 8.5, "axes.labelsize": 8.5, "axes.titlesize": 8.5, "legend.fontsize": 8,
+plt.rcParams.update({"font.family": "serif", "font.serif": ["Liberation Serif", "STIXGeneral", "DejaVu Serif"], "mathtext.fontset": "stix", "font.size": 8.5, "axes.labelsize": 8.5, "axes.titlesize": 8.5, "legend.fontsize": 8,
                      "xtick.labelsize": 8, "ytick.labelsize": 8, "axes.linewidth": 0.6, "lines.linewidth": 1.2, "pdf.fonttype": 42,
                      "savefig.bbox": "tight"})
 COL = {"ours": "#1f5fbf", "gs": "#7a7a7a", "gm": "#b54708", "accent": "#2e8b57", "bad": "#c0392b"}
 ONE_COL, TWO_COL = 3.5, 7.16      # IEEE column / page width in inches
 PRINT_ONE, PRINT_TWO = 3.08, 6.87  # printed widths of the single- (0.88\linewidth) and two-column (0.96\textwidth) figures
+
+
+def sublabels(fig, pairs, gap=0.012, fontsize=8.5):
+    """Panel titles BELOW the panels (IEEE style), all on one baseline: pairs = [(axes or list of axes, label), ...]."""
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    groups = [(ax if isinstance(ax, (list, tuple)) else [ax], lab) for ax, lab in pairs]
+    low = min(a.get_tightbbox(r).y0 for axs, _ in groups for a in axs)
+    y = fig.transFigure.inverted().transform((0, low))[1] - gap
+    for axs, lab in groups:
+        x0, x1 = min(a.get_position().x0 for a in axs), max(a.get_position().x1 for a in axs)
+        fig.text((x0 + x1) / 2, y, lab, ha="center", va="top", fontsize=fontsize)
 
 
 def table(exp: str, method: str, variant: str | None = None) -> pd.DataFrame:
@@ -87,7 +99,6 @@ def fig_law():
     a.plot([0.5, 1], [0.5, 1], ls="--", lw=0.8, color="k")
     a.set_xlim(0.5, 1.0); a.set_ylim(0.5, 1.0)
     a.set_xlabel(r"predicted $\Phi((2p-1)\sqrt{n})$"); a.set_ylabel("measured bit acc."); a.set_xticks([0.5, 0.75, 1.0]); a.set_yticks([0.5, 0.75, 1.0])
-    a.set_title("(a) law vs. measured")
     print(f"law: max |predicted - measured| = {max(errs):.3f}")
     a.legend(loc="lower right", frameon=False, fontsize=7.5, handletextpad=0.3, borderaxespad=0.2, labelspacing=0.2)
     n = np.logspace(0, 4.3, 200)
@@ -95,11 +106,13 @@ def fig_law():
         b.plot(n, [phi((2 * p - 1) * sqrt(v)) for v in n], ls=ls, color="k", label=f"$p={p}$")
     for v, txt, ha in ((64, "256 bit", "right"), (1024, "16 bit", "left")):      # n = 64 and 1024 votes per bit
         b.axvline(v, color=COL["bad"] if v == 64 else COL["accent"], lw=0.8)
-        b.text(v * (0.8 if ha == "right" else 1.25), 0.515, txt, fontsize=7.5, ha=ha, va="bottom", color=COL["bad"] if v == 64 else COL["accent"])
+        # "256 bit" sits above the curves (top left is empty), "16 bit" below them (bottom right is empty)
+        b.text(v * (0.8 if ha == "right" else 1.25), 0.975 if v == 64 else 0.515, txt, fontsize=7.5, ha=ha, va="top" if v == 64 else "bottom",
+               color=COL["bad"] if v == 64 else COL["accent"])
     b.set_xscale("log"); b.set_ylim(0.5, 1.0); b.set_xlabel("votes per bit $n$"); b.set_ylabel("predicted bit acc."); b.set_yticks([0.5, 0.75, 1.0]); b.set_xticks([1, 100, 10000])
-    b.set_title("(b) law vs. votes")
     # line styles (p = 0.549 solid, 0.527 dashed, 0.511 dotted) are explained in the caption: no room for a legend in one column
     fig.tight_layout(w_pad=0.4)
+    sublabels(fig, [(a, "(a) law vs. measured"), (b, "(b) law vs. votes")])
     fig.savefig(OUT / "law.pdf"); plt.close(fig)
     print("law: max |pred-meas| =", round(max(errs), 4))
 
@@ -137,42 +150,53 @@ def fig_croplimit():
 
 # %%
 def fig_ablation():
-    # (a): real embeddings, 256 bits each, generated / attacked / inverted separately (15 key attacks): GS-256 with the hard
-    #   majority (final_gs256q) and with a magnitude-weighted vote (final_gs256s), SpecShade-256 with hard cell reads
+    # (a): real embeddings, 256 bits each, generated / attacked / inverted separately (15 representative attacks): GS-256 with the
+    #   hard majority (final_gs256q) and with a magnitude-weighted vote (final_gs256s), SpecShade-256 with hard cell reads
     #   (final256h) and with magnitude weighting (final256). (b): sign survival per ring of the same inverted noise of 100
-    #   SpecShade-256 images (src/proto_freq_survival.py, results/freq_survival2).
+    #   SpecShade-256 images (src/proto_freq_survival.py, results/freq_survival2). Single-column figure of the paper.
     import json
     S = json.load(open(RES / "freq_survival2" / "summary.json"))["attacks"]
     cells = [(["regen_sd@2.0", "regen_sd@2"], "regen.\n$\\times$2"), (["regen_sd@4.0", "regen_sd@4"], "regen.\n$\\times$4"),
              (["img2img_anime@0.3"], "img2img\n0.3"), (["img2img_anime@0.5"], "img2img\n0.5")]
     variants = [(_opt("final_gs256q", "gaussian_shading", "soft"), "spatial, hard"), (_opt("final_gs256s", "gaussian_shading", "soft"), "spatial, soft"),
                 (_opt("final256h", "stylering", "no_ecc"), "Fourier, hard"), (_opt(_first("final256ua", "final256"), "stylering", "no_ecc"), "Fourier, soft")]
-    fig = plt.figure(figsize=(PRINT_TWO, 1.72))
-    gs = fig.add_gridspec(1, 4, width_ratios=[2.0, 1.05, 0.95, 1.0], wspace=0.38, left=0.05, right=0.995, bottom=0.2, top=0.88)
-    a, b, c = fig.add_subplot(gs[0]), fig.add_subplot(gs[1]), fig.add_subplot(gs[2])
+    fig = plt.figure(figsize=(PRINT_ONE / 0.88, 1.62))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.75, 1.0], wspace=0.42, left=0.115, right=0.99, bottom=0.26, top=0.97)
+    a, b = fig.add_subplot(gs[0]), fig.add_subplot(gs[1])
     w = 0.19
     for i, (df, lab) in enumerate(variants):
         ys = [_pick([df], ks, "tpr_1fpr") for ks, _ in cells]
         shade = ["#c7c7c7", "#8f8f8f", "#8fb3e6", COL["ours"]][i]
         a.bar(np.arange(len(cells)) + (i - 1.5) * w, ys, w, color=shade, label=lab, edgecolor="k", lw=0.3)
-    a.set_xticks(range(len(cells))); a.set_xticklabels([lab for _, lab in cells], fontsize=7.5); a.set_xlim(-0.55, len(cells) - 0.45)
-    a.set_ylim(0, 1.42); a.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0]); a.set_ylabel("TPR@1%FPR")
-    a.set_title("(a) embedding domain $\\times$ vote type")
-    a.legend(loc="upper center", bbox_to_anchor=(0.5, 1.02), frameon=False, ncol=2, fontsize=7.5, handlelength=1.0, labelspacing=0.25, columnspacing=0.7)
+    a.set_xticks(range(len(cells))); a.set_xticklabels([lab for _, lab in cells], fontsize=7); a.set_xlim(-0.55, len(cells) - 0.45)
+    a.set_ylim(0, 1.5); a.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0]); a.set_ylabel("TPR@1%FPR")
+    a.legend(loc="upper center", bbox_to_anchor=(0.5, 1.03), frameon=False, ncol=2, fontsize=7, handlelength=1.0, labelspacing=0.2, columnspacing=0.6)
     rings = np.arange(1, 45)
     for k, lab, col in (("regen_sd:2.0", "regen. $\\times$2", COL["ours"]), ("img2img_anime:0.5", "img2img 0.5", COL["accent"])):
         b.plot(rings, S[k]["hard"], color=col, lw=1.0, label=lab)
         b.plot(rings, S[k]["weighted"], color=col, lw=1.0, ls="--")
     sp = S["regen_sd:2.0"]["spatial_hard"]
     b.axhline(sp, color="k", lw=0.6, ls=":", label="spatial, hard")
-    b.set_xlabel("ring $r$"); b.set_ylabel("sign survival"); b.set_ylim(0.48, 0.83); b.set_xlim(1, 44)
-    b.set_title("(b) survival per ring"); b.legend(frameon=False, fontsize=7.5, handlelength=1.0, handletextpad=0.4, loc="upper right", labelspacing=0.2, borderaxespad=0.15)
+    b.set_xlabel("ring $r$"); b.set_ylabel("sign survival"); b.set_ylim(0.48, 0.86); b.set_xlim(1, 44)
+    b.legend(frameon=False, fontsize=6.6, handlelength=0.9, handletextpad=0.3, loc="upper right", labelspacing=0.15, borderaxespad=0.1)
     b.grid(alpha=0.25, lw=0.5)
+    sublabels(fig, [(a, "(a) embedding domain $\\times$ vote type"), (b, "(b) survival per ring")], fontsize=8)
+    fig.savefig(OUT / "ablation.pdf"); plt.close(fig)
+
+
+def fig_coherent():
+    # Supplementary figure: an earlier coherent design in which all coefficients of an angular sector of a ring share one chip
+    #   (16-bit ablation). (a) TPR under img2img style transfer against the number of sectors per ring; (b) top-left quarters
+    #   of the same prompts generated with each design.
+    from PIL import Image
+    fig = plt.figure(figsize=(PRINT_ONE / 0.88, 1.62))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.05], wspace=0.22, left=0.125, right=0.99, bottom=0.27, top=0.9)
+    c = fig.add_subplot(gs[0])
     ks = [("main", "1"), ("abl_sec4", "4"), ("abl_sec8", "8"), ("abl_sec16", "16"), ("abl_sec32", "32"), ("abl_sec0", "per\npair")]
     tpr = [fam(table(e, "stylering"), "img2img", "0.5", "tpr_1fpr") for e, _ in ks]
     c.plot(range(len(ks)), tpr, marker="o", ms=3.5, color=COL["ours"])
     for i, t in enumerate(tpr):                       # label the first, the n_s = 8 and the last point only (the rest is in the text)
-        if i == 0:                                    # end labels are aligned towards the inside so that they stay within the frame
+        if i == 0:
             c.text(i + 0.06, t + 0.025, f"{t:.2f}", ha="left", va="bottom", fontsize=7.5)
         elif i == 2:
             c.text(i, t + 0.025, f"{t:.2f}", ha="center", va="bottom", fontsize=7.5)
@@ -180,26 +204,23 @@ def fig_ablation():
             c.text(i - 0.05, t - 0.03, f"{t:.2f}", ha="right", va="top", fontsize=7.5)
     c.set_xticks(range(len(ks))); c.set_xticklabels([k for _, k in ks], fontsize=7.5)
     c.set_xlabel("sectors per ring $n_s$"); c.set_ylabel("TPR, img2img 0.5")
-    c.set_ylim(0, 0.72); c.set_title("(c) coherent chips: robust")
-    c.grid(alpha=0.25, lw=0.5)
-    # (d) ... but visible: top-left quarters of the same prompts generated with each design (16-bit ablation)
-    from PIL import Image
+    c.set_ylim(0, 0.72); c.grid(alpha=0.25, lw=0.5)
     designs = [("main", "$n_s{=}1$"), ("abl_sec8", "$n_s{=}8$"), ("abl_sec0", "pair")]
     pids = ["p0000", "p0003"]                              # two prompts with flat backgrounds
-    t = fig.add_subplot(gs[3]); t.axis("off")
-    t.set_title("(d) coherent chips: visible", pad=15)
-    sub = gs[3].subgridspec(len(pids), len(designs), wspace=0.04, hspace=0.04)
+    t = fig.add_subplot(gs[1]); t.axis("off")
+    sub = gs[1].subgridspec(len(pids), len(designs), wspace=0.04, hspace=0.04)
     for r, pid in enumerate(pids):
-        for c, (exp, lab) in enumerate(designs):
-            ax = fig.add_subplot(sub[r, c])
+        for k, (exp, lab) in enumerate(designs):
+            ax = fig.add_subplot(sub[r, k])
             im = Image.open(RES / exp / "stylering" / "gen" / f"{pid}.png").convert("RGB").crop((0, 0, 256, 256))
             ax.imshow(np.asarray(im), interpolation="lanczos"); ax.set_xticks([]); ax.set_yticks([])
             ax.set_anchor("N" if r == 0 else "S")
-            for sp in ax.spines.values():
-                sp.set_linewidth(0.4)
+            for s in ax.spines.values():
+                s.set_linewidth(0.4)
             if r == 0:
                 ax.set_title(lab, fontsize=7.5, pad=1.5)
-    fig.savefig(OUT / "ablation.pdf"); plt.close(fig)
+    sublabels(fig, [(c, "(a) coherent chips: robust"), (t, "(b) coherent chips: visible")], fontsize=8)
+    fig.savefig(OUT / "coherent.pdf"); plt.close(fig)
 
 
 # %% [markdown]
@@ -301,7 +322,7 @@ def fig_geo():
         a.plot(halves, [rot(geof, g, col) for g in halves], "o", ms=3.5, mfc="white", color=COL["ours"])
         a.plot(ints, [rot(gsg, g, col) for g in ints], ls=ls, marker="s", ms=3, color=COL["gs"], lw=1.0, label="GS-256" if col == "tpr_1fpr" else None)
     a.set_xlabel("rotation angle (deg)"); a.set_ylim(-0.03, 1.03); a.set_xticks([0, 15, 30, 45, 60, 75, 90]); a.set_yticks([0, 0.5, 1.0])
-    a.set_title("(a) rotation"); a.grid(alpha=0.25, lw=0.5)
+    a.grid(alpha=0.25, lw=0.5)
     big, small = [0.9, 0.75, 0.5], [0.4, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05]
     def crop(df, x, col):
         k = f"crop_scale@{x}"
@@ -321,11 +342,11 @@ def fig_geo():
     b.set_ylim(-0.03, 1.03); c.set_ylim(0.45, 1.01); b.set_yticks([0, 0.5, 1.0]); c.set_yticks([0.5, 0.75, 1.0])
     for ax in (b, c):
         ax.set_xticks([0.75, 0.5, 0.25]); ax.set_xticklabels(["0.75", "0.50", "0.25"])
-    b.set_title("(b) crop: detection"); c.set_title("(c) crop: decoding")
-    # the four series of (b)/(c) in one row below the panels; (a) uses the first and third of them (solid TPR, dashed accuracy)
-    fig.tight_layout(w_pad=0.8, rect=(0, 0.1, 1, 1))
+    # the four series of (b)/(c) in one row above the panels (the panel titles go below, IEEE style); (a) uses the first and third of them (solid TPR, dashed accuracy)
+    fig.tight_layout(w_pad=0.8, rect=(0, 0, 1, 0.9))
+    sublabels(fig, [(a, "(a) rotation"), (b, "(b) crop: detection"), (c, "(c) crop: decoding")])
     hs, ls = b.get_legend_handles_labels()
-    fig.legend(hs, ls, loc="lower center", bbox_to_anchor=(0.5, 0.0), ncol=4, frameon=False, fontsize=7.5, handlelength=1.6,
+    fig.legend(hs, ls, loc="upper center", bbox_to_anchor=(0.5, 1.0), ncol=4, frameon=False, fontsize=7.5, handlelength=1.6,
                handletextpad=0.5, columnspacing=2.0)
     fig.savefig(OUT / "geo.pdf"); plt.close(fig)
 
@@ -358,7 +379,7 @@ def fig_capacity():
 
 
 # %%
-FIGS = {"capacity": fig_capacity, "law": fig_law, "croplimit": fig_croplimit, "ablation": fig_ablation, "gm": fig_gm, "geo": fig_geo}
+FIGS = {"capacity": fig_capacity, "law": fig_law, "croplimit": fig_croplimit, "ablation": fig_ablation, "coherent": fig_coherent, "gm": fig_gm, "geo": fig_geo}
 
 if __name__ == "__main__":
     for name in (sys.argv[1:] or FIGS):

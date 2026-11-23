@@ -93,7 +93,7 @@ ROWS_MAIN = [
     ("AdaIN $\\alpha{=}1.0$", fam_cells("adain", "1.0")),
     ("IP2P $g_I{=}2.0$", fam_cells("ip2p", "2.0")), ("IP2P $g_I{=}1.5$", fam_cells("ip2p", "1.5")),
     ("IP2P $g_I{=}1.0$", fam_cells("ip2p", "1.0")),
-    (None, "Classical distortions"),
+    (None, "Common distortions"),
     ("JPEG $Q{=}25$", ["jpeg@25.0", "jpeg@25"]), ("Gaussian blur $r{=}8$", ["blur@8.0", "blur@8"]),
     ("Gaussian noise $\\sigma{=}0.1$", ["noise@0.1"]), ("Median $k{=}7$", ["median@7.0", "median@7"]),
     ("Resize $0.25$", ["resize@0.25"]), ("Brightness $\\times6$", ["brightness@6.0", "brightness@6"]),
@@ -128,7 +128,7 @@ def table_main():
     lines.append("\\midrule\n" + f"Average (non-geometric) & {tprs[0]} & {accs[0]} & {tprs[1]} & {accs[1]} & {tprs[2]} & {tprs[3]} & {tprs[4]}\\\\")
     body = r"""\begin{table*}[t]
 \centering
-\caption{Robustness against non-geometric and basic geometric attacks (TPR@1\%FPR and bit accuracy). Methods with other capacities are listed by TPR only; style-transfer rows average three styles. Best in bold; second best underlined unless at chance level.}
+\caption{Robustness against non-geometric and basic geometric attacks, measured by TPR@1\%FPR and bit accuracy. Methods with other capacities are listed by TPR only. Style-transfer rows average three styles. Best in bold, second best underlined unless at chance level.}
 \label{tab:main}
 \renewcommand{\arraystretch}{0.90}
 \setlength{\tabcolsep}{4pt}
@@ -136,7 +136,7 @@ def table_main():
 \toprule
  & \multicolumn{2}{c}{\textbf{\method-256 (ours)}} & \multicolumn{2}{c}{GS-256~\cite{yang2024gaussian}} & RingID~\cite{ci2024ringid} & Stable Sig.~\cite{fernandez2023stable} & VINE-R~\cite{lu2025vine}\\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
-Attack & TPR & Acc & TPR & Acc & TPR & TPR & TPR\\
+Attack & TPR $\uparrow$ & Acc $\uparrow$ & TPR $\uparrow$ & Acc $\uparrow$ & TPR $\uparrow$ & TPR $\uparrow$ & TPR $\uparrow$\\
 """ + "\n".join(lines) + r"""
 \bottomrule
 \end{tabular}
@@ -251,7 +251,7 @@ def table_gm_both():
     lines.append("\\midrule\nAverage (attacks) & " + " & ".join(f"{np.mean(acc[e]['t']):.2f} & {np.mean(acc[e]['a']):.3f}" for e in ("gm256a", "gm256")) + "\\\\")
     body = r"""\begin{table}[t]
 \centering
-\caption{Both detection scores of GaussMarker-256 on the 15 key cells (TPR@1\%FPR / bit accuracy): the bit agreement with the known message after the restorer (used in the paper) and the fixed fusion of this agreement with the ring distance. Each score is calibrated on the same $1{,}000$ unwatermarked images.}
+\caption{Both detection scores of GaussMarker-256 on the 15 representative attacks, given as TPR@1\%FPR and bit accuracy. The first score is the bit agreement with the known message after the restorer, which the paper uses, and the second is the fixed fusion of this agreement with the ring distance. Each score is calibrated on the same $1{,}000$ unwatermarked images.}
 \label{tab:gm-both}
 \footnotesize
 \setlength{\tabcolsep}{2.5pt}
@@ -333,7 +333,7 @@ def table_quality():
         lines.append(" & ".join(cells) + "\\\\" + ("\n\\midrule" if lab == "No watermark" else ""))
     body = r"""\begin{table}[t]
 \centering
-\caption{Image quality over 1{,}000 generations: FID, CLIP score and the $p$-value of a $t$-test of CLIP scores against no watermark. $^\dagger$Measured at 16 bits (distribution-preserving at any capacity).}
+\caption{Image quality over 1{,}000 generations: FID, CLIP score and the $p$-value of a $t$-test of CLIP scores against no watermark. $^\dagger$Measured at 16 bits. Their noise distribution does not depend on the capacity.}
 \label{tab:quality}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lccc}
@@ -556,9 +556,9 @@ def extra_numbers():
         NUM["GmLossesWord"] = "none" if losses == 0 else str(losses)
         num("GmAvgTprOurs", sum(ot) / len(ot) if ot else None); num("GmAvgTprGM", sum(gt) / len(gt) if gt else None)
         sent = (f"As shown in Table~\\ref{{tab:stats}}, \\method-256 achieves a higher TPR than GaussMarker-256 on {wins} of the "
-                f"{wins + ties + losses} key attacks")
-        sent += (f", the same TPR (within $0.02$) on {ties} and a lower TPR on {losses} ({', '.join(lose_labs)})." if losses
-                 else f" and the same TPR (within $0.02$) on the other {ties}.")
+                f"{wins + ties + losses} representative attacks")
+        sent += (f", a TPR within $0.02$ on {ties} and a lower TPR on {losses}, namely {', '.join(lose_labs)}." if losses
+                 else f" and a TPR within $0.02$ on the other {ties}.")
         text.append(sent)
         text.append(f"On average, the TPR of \\method\\ is {fmt(sum(ot) / len(ot))}, whereas that of GaussMarker is {fmt(sum(gt) / len(gt))}.")
         acc_best = 0

@@ -60,10 +60,10 @@ for lab, e_geo, e_combo in VARIANTS:
 hdr = " & ".join(["Detector"] + [c for c, _, _ in COLS]) + "\\\\"
 body = r"""\begin{table}[t]
 \centering
-\caption{Ablation of the self-synchronization: TPR@1\%FPR of the 256-bit detector with one component removed, on 50 prompts $\times$ 2 attack seeds.}
+\caption{Ablation of the self-synchronization. Each cell gives the TPR@1\%FPR of the 256-bit detector with one component removed, on 50 prompts with 2 attack seeds.}
 \label{tab:syncabl}
 \scriptsize
-\setlength{\tabcolsep}{1.5pt}
+\setlength{\tabcolsep}{1.4pt}
 \begin{tabular}{lccccc}
 \toprule
 """ + hdr + r"""

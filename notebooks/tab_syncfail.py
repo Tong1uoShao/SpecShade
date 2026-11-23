@@ -93,7 +93,7 @@ for a in (0.9, 0.75, 0.5):
         print(f"crop a={a} seed={sd}: median estimate (ty, tx) = ({med[0]:+.2f}, {med[1]:+.2f}) px; crop-box centre offset (dx, dy) = ({dx:+.2f}, {dy:+.2f}) px")
     dist = np.asarray(dist)
     tpr = np.mean([r["score"] > thr for r in R])
-    lines.append(f"Crop $a{{=}}{a}$ & {len(R)} & shift/zoom {pct(acc_crop)} & median $|\\Delta\\gamma|$ ${np.median(np.abs(es - s_true)):.3f}$, shift err.\\ ${np.median(dist):.2f}$ px & {pct(np.mean((np.abs(es - s_true) <= 0.02) & (dist <= 1.0)))} & {tpr:.2f} & --\\\\")
+    lines.append(f"Crop $a{{=}}{a}$ & {len(R)} & shift/scale {pct(acc_crop)} & median $|\\Delta\\gamma|$ ${np.median(np.abs(es - s_true)):.3f}$, shift err.\\ ${np.median(dist):.2f}$ px & {pct(np.mean((np.abs(es - s_true) <= 0.02) & (dist <= 1.0)))} & {tpr:.2f} & --\\\\")
     nums[f"CropScaleErr{int(a*100)}"] = float(np.median(np.abs(es - s_true))); nums[f"CropShiftErr{int(a*100)}"] = float(np.median(dist))
 # ---- mirror ----
 for st, lab in ((0, "Mirror"), (1, "Vertical flip")):
@@ -117,7 +117,7 @@ for name, lab in (("combo_crop_rotate", "Crop $0.75$ + rot.\\ $30^{\\circ}$"), (
     o = ORC.get(name, {})
     orc = f"{o['oracle_tpr']:.2f}" if o else "--"
     if name == "combo_crop_rotate":
-        acc = f"joint {pct(joint.mean())}"; par = "angle $330^{\\circ}$, zoom $0.87$"; okc = pct(joint.mean())
+        acc = f"joint {pct(joint.mean())}"; par = "angle $330^{\\circ}$, scale $0.87$"; okc = pct(joint.mean())
     elif name == "combo_style_mirror":
         fl = np.asarray([bool(m.get("flipped")) for m in M]); acc = f"flip {pct(fl.mean())}"; par = "--"; okc = pct(fl.mean())
     else:
@@ -128,7 +128,7 @@ for name, lab in (("combo_crop_rotate", "Crop $0.75$ + rot.\\ $30^{\\circ}$"), (
     nums[f"Joint{name}"] = float(joint.mean())
 body = r"""\begin{table*}[t]
 \centering
-\caption{Synchronisation of \method-256 on the geometric and compound attacks: share of images for which a search accepts a peak, accuracy of the recovered parameters (angle error against the applied rotation; zoom error against $\sqrt{a}$ and shift error against the centre of the crop box, in latent pixels), share within tolerance ($1^{\circ}$, $0.02$ zoom, 1 px), and TPR@1\%FPR of the blind detector and, for the compound attacks analysed in Sec.~IV-D, of the oracle alignment.}
+\caption{Synchronization of \method-256 under the geometric and compound attacks. The columns give the share of images for which a search accepts a peak, the accuracy of the recovered parameters, the share within a tolerance of $1^{\circ}$, $0.02$ in scale and 1 pixel, and the TPR@1\%FPR of the blind detector and of the oracle alignment. The angle error is measured against the applied rotation, the scale error against $\sqrt{a}$ and the shift error against the center of the crop box, in latent pixels.}
 \label{tab:syncfail}
 \scriptsize
 \setlength{\tabcolsep}{3pt}

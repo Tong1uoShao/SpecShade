@@ -27,14 +27,14 @@ for f in FONTS.glob("ComicNeue-*.ttf"):
 
 # labels are set in italic per text() call; a global italic style would also turn the STIX "rm" math font italic,
 # which lacks operators such as \odot, \oplus, \cdots and \geq
-plt.rcParams.update({"font.family": "Comic Neue", "mathtext.fontset": "stix",
+plt.rcParams.update({"font.family": "serif", "font.serif": ["Liberation Serif", "STIXGeneral", "DejaVu Serif"], "mathtext.fontset": "stix",
                      "font.size": 7.5, "pdf.fonttype": 42, "axes.linewidth": 0.5})
 INK = "#222222"
 C_EMB, C_DET, C_ATK, C_ATK_F = "#E03A3A", "#2F7CC4", "#3E9CC2", "#DCEFF7"
 C_KEY, C_KEY_F = "#C69214", "#FFF5D9"
 STAGE = [("Inversion", "#7A7A7A", "#F4F4F4"), ("Synchronization", "#4E9E5F", "#E6F3E6"),
          ("Voting", "#8C6BC2", "#EFEAF8"), ("Decision", "#D05A5A", "#F9E4E4")]
-FL, FT = 7.5, 8.8                                  # label / title font sizes (pt)
+FL, FT = 8.3, 9.6                                  # label / title font sizes (pt)
 
 W, H = 716, 336                                   # canvas units (1 unit = 0.01 in)
 fig = plt.figure(figsize=(W / 100, H / 100))
@@ -51,7 +51,7 @@ def rbox(x0, y0, w, h, fc="none", ec=INK, lw=0.8, ls="-", r=4, z=1):
     ax.add_patch(FancyBboxPatch((x0, y0), w, h, boxstyle=f"round,pad=0,rounding_size={r}", fc=fc, ec=ec, lw=lw, ls=ls, zorder=z))
 
 
-def text(x, y, s, size=FL, color=INK, ha="center", va="center", style="italic", **kw):
+def text(x, y, s, size=FL, color=INK, ha="center", va="center", style="normal", **kw):
     ax.text(x, y, s, fontsize=size, color=color, ha=ha, va=va, zorder=8, fontstyle=style, **kw)
 
 
@@ -131,7 +131,7 @@ text(155, 313, "(a) Watermark embedding", size=FT, color=C_EMB)
 rbox(306, 13, 72, 312, fc=C_ATK_F, ec=C_ATK, lw=1.0, ls=(0, (4, 2.5)), r=6, z=0)
 text(342, 313, "(b) Attacks", size=FT, color=C_ATK)
 rbox(386, 13, 321, 312, ec=C_DET, lw=1.0, ls=(0, (5, 3)), r=6, z=0)
-text(546, 313, "(c) Blind detection", size=FT, color=C_DET)
+text(546, 313, "(c) Blind detection and extraction", size=FT, color=C_DET)
 
 # %% (a) embedding
 C1, C2, C3, C4 = 54, 126, 194, 244
@@ -147,7 +147,7 @@ ax.add_patch(Circle((C3, R1), 7, fc="white", ec=INK, lw=0.9, zorder=7)); text(C3
 arrow((C2 + 25, R1), (C3 - 8, R1)); text((C2 + C3) / 2 + 2, R1 + 8, r"$|\mathbf{F}|$")
 arrow((C3 + 8, R1), (C4 - 20, R1)); text(C3 + 20, R1 + 8, "IFFT")
 stack("noise_w", C4 + 8, R1, 34)
-text(C4 + 8, R1 + 41, "watermarked"); text(C4 + 8, R1 + 31, r"noise $\mathbf{z}_T^{w}$")
+text(C4 + 8, R1 + 42, "watermarked"); text(C4 + 8, R1 + 31, r"noise $\mathbf{z}_T^{w}$")
 bits(C1, R2)
 text(C1, R2 - 18, r"payload $\mathbf{u}$")
 arrow((C1 + 29, R2), (C3 - 26, R2))
@@ -172,14 +172,14 @@ arrow((C2 - 2, R3 + 16), (C2 - 2, R2 - 13), color=C_KEY, ls=(0, (2.5, 1.8)), lw=
 arrow((C1 + 14, R3 + 21), (C2 - 16, R2 - 3), color=C_KEY, conn="arc3,rad=-0.2")
 arrow((C3, R3 + 21), (C3, R2 - 25), color=C_KEY)
 img("image", C4 + 8, R3, 44, interp="bilinear")
-text(C4 + 8, R3 - 31, "watermarked"); text(C4 + 8, R3 - 41, "image")
+text(C4 + 8, R3 - 31, "watermarked"); text(C4 + 8, R3 - 42, "image")
 
 # %% (b) attacks
 AX = 342
 for (n, t), y in zip([("edit_regen", "regeneration"), ("edit_style", "style transfer"), ("edit_crop", "crop"), ("edit_rot", "rotation")],
                      [254, 186, 118, 50]):
     img(n, AX, y, 42, interp="bilinear")
-    text(AX, y - 28, t, size=7.2)
+    text(AX, y - 28, t, size=8)
 arrow((C4 + 33, R3), (306, R3), color=C_ATK, lw=1.1)
 
 # %% (c) detection: four stages
@@ -198,10 +198,10 @@ cx = (SX[0][0] + SX[0][1]) / 2
 img("edit_crop", cx, 252, 40, interp="bilinear")
 arrow((cx, 230), (cx, 214))
 unet(cx, 192, scale=0.72, palette=("#8FD3C6", "#D7D2EF", "#76B7E5"))
-text(cx, 166, "DDIM", size=7.2)
+text(cx, 166, "DDIM", size=8)
 arrow((cx, 159), (cx, 143))
 stack("zhat", cx, 120, 30, off=3)
-text(cx, 92, r"$\hat{\mathbf{z}}_T$"); text(cx, 80, "misaligned", size=7.2)
+text(cx, 92, r"$\hat{\mathbf{z}}_T$"); text(cx, 80, "misaligned", size=8)
 
 # (2) synchronization
 x0, x1 = SX[1]; cx = (x0 + x1) / 2
@@ -236,7 +236,7 @@ da.axvline(tau, color=INK, lw=0.7, ls="--"); da.axvline(sc, color=STAGE[3][1], l
 da.set_xlim(0.08, max(0.42, sc + 0.04))
 yl = da.get_ylim()[1]
 da.text(tau, yl * 0.97, r" $\tau$", fontsize=8, va="top"); da.text(sc, yl * 0.97, r" $S$", fontsize=8, color=STAGE[3][1], va="top")
-text(cx, 205, r"score $S$ vs. $\tau$")
+text(cx, 205, r"score $S$ vs. $\tau$", size=8)
 text(cx, 184, r"$S\geq\tau$", color=STAGE[3][1]); text(cx, 172, "detected", color=STAGE[3][1])
 arrow((cx, 162), (cx, 132))
 bits(cx, 120, w=54)

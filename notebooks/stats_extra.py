@@ -226,13 +226,14 @@ N_BOTH = len(both)
 rows.append("\\midrule\nAverage & " + " & ".join(avg_a) + " & " + " & ".join(avg_t) + "\\\\")
 body = r"""\begin{table*}[t]
 \centering
-\caption{AUC of the """ + ("six" if NM == 6 else "five") + r""" compared methods and TPR@1\%FPR with its 95\% interval of the 256-bit methods on the 15 key attacks. The interval is a bootstrap over the 100 prompts in which both attacked versions of a prompt are resampled together (Clopper--Pearson over the 100 prompts when every image or none is detected). Style-transfer rows use the anime style, whereas Table~\ref{tab:main} averages three styles. Best in bold.}
+\caption{AUC of the """ + ("six" if NM == 6 else "five") + r""" compared methods and TPR@1\%FPR with its 95\% interval of the 256-bit methods on the 15 representative attacks. The interval is a bootstrap over the 100 prompts in which both attacked versions of a prompt are resampled together. When every image or none is detected, the Clopper--Pearson interval is used. Style-transfer rows use the anime style, whereas Table~\ref{tab:main} averages three styles. Best in bold.}
 \label{tab:stats}
+\renewcommand{\arraystretch}{1.15}\setlength{\aboverulesep}{0pt}\setlength{\belowrulesep}{0pt}
 \setlength{\tabcolsep}{""" + ("2.6pt" if NM == 6 else "3.5pt") + r"""}
-\begin{tabular}{l""" + "c" * NM + r"""ccc}
+\begin{tabular}{l""" + "c" * NM + r"""|ccc}
 \toprule
- & \multicolumn{""" + str(NM) + r"""}{c}{AUC} & \multicolumn{3}{c}{TPR@1\%FPR [95\% CI]}\\
-\cmidrule(lr){2-""" + str(NM + 1) + r"""}\cmidrule(lr){""" + str(NM + 2) + "-" + str(NM + 4) + r"""}
+ & \multicolumn{""" + str(NM) + r"""}{c|}{AUC $\uparrow$} & \multicolumn{3}{c}{TPR@1\%FPR $\uparrow$ [95\% CI]}\\
+\cmidrule(lr){2-""" + str(NM + 4) + r"""}
 Attack & \textbf{\method} & GS & GaussMarker & SFW & MaXsive""" + (" & T2SMark" if NM == 6 else "") + r""" & \textbf{\method} & GS & GaussMarker\\
 \midrule
 """ + "\n".join(rows) + r"""
@@ -320,7 +321,7 @@ for lab, a, s_ in KEYS:
 irows.append("\\midrule\nAverage & " + " & ".join(sum((best([float(np.mean(iavg[m][N])) for m in ("ours", "gs")], 2) for N in N_USERS), [])) + "\\\\")
 ibody = r"""\begin{table}[t]
 \centering
-\caption{Top-1 identification accuracy among $10^{3}$ and $10^{6}$ enrolled users with random 256-bit identifiers, computed from the decoded payloads on the 15 key attacks. Best in bold.}
+\caption{Top-1 identification accuracy among $10^{3}$ and $10^{6}$ enrolled users with random 256-bit identifiers, computed from the decoded payloads on the 15 representative attacks. Best in bold.}
 \label{tab:ident}
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{lcccc}

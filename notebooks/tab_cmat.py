@@ -29,7 +29,7 @@ for r, rl in REG:
     lines.append(rl + " & " + " & ".join(vals) + "\\\\")
 body = r"""\begin{table*}[t]
 \centering
-\caption{Compound attacks of \method-256: a regeneration or style-transfer attack followed by a geometric edit (TPR@1\%FPR / bit accuracy, 100 images per cell, unified detector with the threshold of the paper). The joint search is triggered on """ + f"{100*np.nanmean(trig_all):.0f}" + r"""\% of the images and its peak passes the gate on """ + f"{100*np.nanmean(acc_all):.0f}" + r"""\%.}
+\caption{Compound attacks on \method-256, in which a regeneration or style-transfer attack is followed by a geometric transformation. Each cell gives the TPR@1\%FPR and the bit accuracy on 100 images, for the detector and the threshold of the paper. The joint search is triggered on """ + f"{100*np.nanmean(trig_all):.0f}" + r"""\% of the images and its peak passes the gate on """ + f"{100*np.nanmean(acc_all):.0f}" + r"""\%.}
 \label{tab:cmat}
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{lcccccc}

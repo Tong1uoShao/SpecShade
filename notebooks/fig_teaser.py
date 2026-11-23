@@ -25,7 +25,7 @@ FONTS = Path(os.environ.get("FONT_DIR", "fonts"))
 PID = os.environ.get("PID", "p0014")
 for f in FONTS.glob("ComicNeue-*.ttf"):
     font_manager.fontManager.addfont(str(f))
-plt.rcParams.update({"font.family": "Comic Neue", "mathtext.fontset": "stix", "font.size": 8.6, "pdf.fonttype": 42})
+plt.rcParams.update({"font.family": "serif", "font.serif": ["Liberation Serif", "STIXGeneral", "DejaVu Serif"], "mathtext.fontset": "stix", "font.size": 8.6, "pdf.fonttype": 42})
 INK = "#222222"
 
 
@@ -60,7 +60,7 @@ BX = 2.86                                          # result column
 RY = [1.75, 0.60]                                  # row centres
 
 
-def text(x, y, s, size=8.6, color=INK, style="italic", **kw):
+def text(x, y, s, size=8.6, color=INK, style="normal", **kw):
     return ax.text(x, y, s, fontsize=size, color=color, ha="center", va="center", fontstyle=style, zorder=8, **kw)
 
 
@@ -78,7 +78,7 @@ for r, cy in zip(rows, RY):
     ok = r["score"] >= r["tau"]
     col, fc = ("#2E8B57", "#E8F5EC") if ok else ("#C0392B", "#FBE8E6")
     ax.text(0.13, cy, r["name"].replace(" (ours)", "\n(ours)"), rotation=90, fontsize=8.6, fontweight="bold",
-            fontstyle="italic", ha="center", va="center", color=INK, linespacing=1.1)
+            fontstyle="normal", ha="center", va="center", color=INK, linespacing=1.1)
     img(r["src"], CX[0], cy, S)
     img(r["atk"], CX[1], cy, S)
     t = [text(BX, cy + 0.17, "detected" if ok else "not detected", size=9.8, color=col, fontweight="bold"),

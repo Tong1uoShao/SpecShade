@@ -70,12 +70,12 @@ ia = ID.get("avg", {})
 rows.append("\\midrule\nAverage & " + " & ".join(f"{ia[m][key]:.2f}" if m in ia else "--" for key in ("ident6", "e2e6") for m in ("ours", "gs")) + " & " + " & ".join("--" if m[k][0] != m[k][0] else f"{m[k][0]:.2f}" for k in ("ours21", "gs21")) + "\\\\")
 body = r"""\begin{table}[t]
 \centering
-\caption{Identification among $10^{6}$ enrolled users with random 256-bit identifiers on SD1.5 (Top-1 accuracy over all attacked images, an analytic estimate from the Hamming distance verified by Monte Carlo in Sec.~\ref{sec:exp-capacity}, and detected at 1\%~FPR with the true user ranked first), and TPR@1\%FPR on Stable Diffusion 2.1-base (thresholds from $1{,}000$ unwatermarked SD2.1 images). Best in bold.}
+\caption{Identification among $10^{6}$ enrolled users with random 256-bit identifiers on SD1.5, and TPR@1\%FPR on Stable Diffusion 2.1-base. Top-1 is the accuracy over all attacked images, an analytic estimate from the Hamming distance that is verified by Monte Carlo as described in the text. The second pair of columns also requires detection at 1\%~FPR. The SD2.1 thresholds come from $1{,}000$ unwatermarked SD2.1 images. Best in bold.}
 \label{tab:extra}
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{1.9pt}
 \begin{tabular}{lcccccc}
 \toprule
- & \multicolumn{2}{c}{Top-1, $10^{6}$} & \multicolumn{2}{c}{Detected $\wedge$ Top-1} & \multicolumn{2}{c}{SD2.1-base}\\
+ & \multicolumn{2}{c}{Top-1 $\uparrow$} & \multicolumn{2}{c}{Det.\ $\wedge$ Top-1 $\uparrow$} & \multicolumn{2}{c}{SD2.1 $\uparrow$}\\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 Attack & \textbf{\method} & GS & \textbf{\method} & GS & \textbf{\method} & GS\\
 \midrule

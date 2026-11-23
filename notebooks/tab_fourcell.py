@@ -88,7 +88,7 @@ rows.append("Detection time (s), attacked / unwm. & " + " & ".join(
     (f"\\multicolumn{{2}}{{c}}{{{t:.1f} / {tn:.1f}}}" if t == t else "\\multicolumn{2}{c}{--}") for t, tn in times.values()) + "\\\\")
 body = r"""\begin{table*}[t]
 \centering
-\caption{Embedding domain $\times$ vote rule under geometric and compound attacks with the same synchronisation (rotation search, zoom and shift search, flip candidate, gated joint fallback; 256 bits; TPR@1\%FPR / bit accuracy, 100 prompts $\times$ 2 attack seeds, thresholds from 1,000 unwatermarked images processed by each detector). Detection time excludes the DDIM inversion (for \\method\\ with the joint search run only when neither flip candidate is aligned). Best TPR in bold.}
+\caption{Embedding domain and vote rule under geometric and compound attacks with the same synchronization at 256 bits. Each cell gives the TPR@1\%FPR and the bit accuracy on 100 prompts with 2 attack seeds, with thresholds from 1,000 unwatermarked images processed by each detector. Detection time excludes the DDIM inversion. For \method, the joint search is run only when neither flip candidate is aligned. Best TPR in bold.}
 \label{tab:fourcell}
 \scriptsize
 \setlength{\tabcolsep}{2.5pt}
