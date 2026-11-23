@@ -236,7 +236,7 @@ da.axvline(tau, color=INK, lw=0.7, ls="--"); da.axvline(sc, color=STAGE[3][1], l
 da.set_xlim(0.08, max(0.42, sc + 0.04))
 yl = da.get_ylim()[1]
 da.text(tau, yl * 0.97, r" $\tau$", fontsize=8, va="top"); da.text(sc, yl * 0.97, r" $S$", fontsize=8, color=STAGE[3][1], va="top")
-text(cx, 205, r"score $S$ vs. $\tau$", size=8)
+text(cx, 205, r"compare $S$ with $\tau$", size=8)
 text(cx, 184, r"$S\geq\tau$", color=STAGE[3][1]); text(cx, 172, "detected", color=STAGE[3][1])
 arrow((cx, 162), (cx, 132))
 bits(cx, 120, w=54)

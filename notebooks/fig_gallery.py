@@ -94,7 +94,7 @@ def attacked(attack: str, s: float) -> Path | None:
 GRID = [   # two rows of eight: one setting per attack family that the text discusses (the full matrix is in the tables)
     [(None, None, "Watermarked"), ("regen_sd", 2, "Regen.\\ $\\times2$"), ("regen_sd", 4, "Regen.\\ $\\times4$"),
      ("img2img_anime", 0.5, "img2img $s{=}0.5$"), ("ip2p_anime", 1.0, "IP2P $g_I{=}1.0$"), ("adain_anime", 1.0, "AdaIN $\\alpha{=}1.0$"),
-     ("jpeg", 25, "JPEG $Q{=}25$"), ("blur", 8, "Blur $r{=}8$")],
+     ("jpeg", 25, "JPEG quality 25"), ("blur", 8, "Blur radius 8")],
     [("brightness", 6, "Brightness $\\times6$"), ("rand_drop", 0.8, "Pixel drop $80\\%$"), ("crop_scale", 0.5, "Crop $a{=}0.5$"),
      ("rotate", 75, "Rotation $75^{\\circ}$"), ("mirror", 0, "Mirror"), ("combo_crop_rotate", 1, "Crop + rotation"),
      ("combo_style_crop", 1, "img2img + crop"), ("combo_regen_rotate", 1, "Regen.\\ + rotation")],

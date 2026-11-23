@@ -21,7 +21,7 @@ KEYS = [("Regen.\\ $\\times1$", ["regen_sd@1.0", "regen_sd@1"]), ("Regen.\\ $\\t
         ("Regen.\\ $\\times4$", ["regen_sd@4.0", "regen_sd@4"]), ("VAE-Cheng", ["vae_cheng@3.0", "vae_cheng@3"]),
         ("img2img $s{=}0.3$", ["img2img_anime@0.3"]), ("img2img $s{=}0.5$", ["img2img_anime@0.5"]),
         ("AdaIN $\\alpha{=}0.6$", ["adain_anime@0.6"]), ("AdaIN $\\alpha{=}1.0$", ["adain_anime@1.0"]), ("IP2P $g_I{=}1.0$", ["ip2p_anime@1.0"]),
-        ("JPEG $Q{=}25$", ["jpeg@25.0", "jpeg@25"]), ("Blur $r{=}8$", ["blur@8.0", "blur@8"]), ("Crop $a{=}0.75$", ["crop_scale@0.75"]),
+        ("JPEG quality 25", ["jpeg@25.0", "jpeg@25"]), ("Blur radius 8", ["blur@8.0", "blur@8"]), ("Crop $a{=}0.75$", ["crop_scale@0.75"]),
         ("Rotation $75^{\\circ}$", ["rotate@75.0", "rotate@75"]), ("Mirror", ["mirror@0.0", "mirror@0"]),
         ("img2img + crop", ["combo_style_crop@1.0", "combo_style_crop@1"])]
 

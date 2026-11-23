@@ -112,7 +112,7 @@ def fig_law():
     b.set_xscale("log"); b.set_ylim(0.5, 1.0); b.set_xlabel("votes per bit $n$"); b.set_ylabel("predicted bit acc."); b.set_yticks([0.5, 0.75, 1.0]); b.set_xticks([1, 100, 10000])
     # line styles (p = 0.549 solid, 0.527 dashed, 0.511 dotted) are explained in the caption: no room for a legend in one column
     fig.tight_layout(w_pad=0.4)
-    sublabels(fig, [(a, "(a) law vs. measured"), (b, "(b) law vs. votes")])
+    sublabels(fig, [(a, "(a) predicted and measured"), (b, "(b) predicted against votes")])
     fig.savefig(OUT / "law.pdf"); plt.close(fig)
     print("law: max |pred-meas| =", round(max(errs), 4))
 
@@ -232,7 +232,7 @@ def fig_coherent():
 GM_KEYS = [("Regen. $\\times1$", ["regen_sd@1.0"]), ("Regen. $\\times2$", ["regen_sd@2.0"]), ("Regen. $\\times4$", ["regen_sd@4.0"]),
            ("VAE-Cheng", ["vae_cheng@3.0", "vae_cheng@3"]), ("img2img $0.3$", ["img2img_anime@0.3"]),
            ("img2img $0.5$", ["img2img_anime@0.5"]), ("AdaIN $0.6$", ["adain_anime@0.6"]), ("AdaIN $1.0$", ["adain_anime@1.0"]),
-           ("IP2P $1.0$", ["ip2p_anime@1.0"]), ("JPEG $25$", ["jpeg@25.0", "jpeg@25"]), ("Blur $r{=}8$", ["blur@8.0", "blur@8"]),
+           ("IP2P $1.0$", ["ip2p_anime@1.0"]), ("JPEG $25$", ["jpeg@25.0", "jpeg@25"]), ("Blur radius 8", ["blur@8.0", "blur@8"]),
            ("Crop $0.75$", ["crop_scale@0.75"]), ("Rotation $75^\\circ$", ["rotate@75.0", "rotate@75"]),
            ("Mirror", ["mirror@0.0", "mirror@0"]), ("img2img + crop", ["combo_style_crop@1.0", "combo_style_crop@1"])]
 
@@ -369,7 +369,7 @@ def fig_capacity():
         a.errorbar(xs, [v["acc"] for _, v in pts], yerr=[v["acc_sem"] for _, v in pts], marker=mk, ms=3.5, color=c, lw=1.0, capsize=1.5, label=lab)
         b.plot(xs, [v["tpr"] for _, v in pts], marker=mk, ms=3.5, color=c, lw=1.0, label=lab)
     law = [phi((2 * 0.527 - 1) * sqrt(16384 / L)) for L in Ls]
-    a.plot(range(len(Ls)), law, ls="--", color="k", lw=0.7, label="law, $p{=}0.527$")
+    a.plot(range(len(Ls)), law, ls="--", color="k", lw=0.7, label="model, $p{=}0.527$")
     for ax, yl in ((a, "bit accuracy"), (b, "TPR@1%FPR")):
         ax.set_xticks(range(len(Ls))); ax.set_xticklabels(Ls); ax.set_xlabel("payload (bits)"); ax.set_ylabel(yl); ax.grid(alpha=0.25, lw=0.5)
     a.set_ylim(0.5, 1.02); b.set_ylim(-0.03, 1.03)
